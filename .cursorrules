@@ -1,0 +1,30 @@
+# MediTrack Pro AI Guidelines
+
+## UI & UX Consistency
+- **Compactness**: Prioritize compact designs for tables, dialogs, and popups. Aim for high information density while maintaining legibility.
+- **Uniformity**: Follow established UI patterns for cards, tabs, and layouts. Use components from `@/components/ui` (shadcn/ui) exclusively.
+- **Color Palette**:
+  - **Primary**: Soft blue (#A0D2EB) - for competence and healthcare trust.
+  - **Background**: Light blue (#F0F8FF) - very desaturated and bright.
+  - **Accent**: Muted purple (#B19CD9).
+- **Typography**: Always use 'PT Sans' for body and headlines.
+- **Spacing**: Use tight spacing (gap-1, gap-2) in forms and lists to keep the interface compact.
+
+## Inventory & Stock Management
+- **Aggregation**: Inventory overviews MUST group batches by `itemId`. Never display separate rows for different batches of the same item in the main view.
+- **Detail Popups**: Use the `ItemDetails` component to show all batches, usage statistics, and activity history.
+- **FEFO Management (First Expired, First Out)**:
+  - Suggest the specific batch to use first based on the earliest expiry date.
+  - Highlight batches expiring within 90 days (Yellow) and 30 days (Red/Critical).
+- **Batch Controls**: Allow stock adjustments and corrections directly from the batch breakdown table in the popup.
+
+## Technical Standards
+- **Server Actions**: Place all server-side logic in `src/app/actions/` and ensure they are re-exported via `src/app/actions/index.ts`.
+- **Security**: Every server action must begin with an authentication check: `await requireAuth([...roles])`.
+- **Date Handling**: Use `date-fns` for all date logic (formatting, comparison, differences).
+- **Type Safety**: Maintain strict TypeScript interfaces in `src/lib/types.ts`. Avoid `any` except during rapid prototyping.
+- **Icons**: Use `lucide-react` or `@radix-ui/react-icons` for all iconography.
+
+## Communication
+- **Updates**: Provide concise, actionable summaries of changes.
+- **Artifacts**: Maintain `task.md`, `implementation_plan.md`, and `walkthrough.md` for project tracking.

@@ -1,0 +1,1342 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.billings": {
+      "name": "billings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "patient_name": {
+          "name": "patient_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "bill_type": {
+          "name": "bill_type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prescription_number": {
+          "name": "prescription_number",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "receipt_number": {
+          "name": "receipt_number",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "items": {
+          "name": "items",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "subtotal": {
+          "name": "subtotal",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "discount": {
+          "name": "discount",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grand_total": {
+          "name": "grand_total",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "payment_details": {
+          "name": "payment_details",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dispensing_location_id": {
+          "name": "dispensing_location_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_dispensed": {
+          "name": "is_dispensed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "billings_id_not_null": {
+          "name": "billings_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "billings_patient_name_not_null": {
+          "name": "billings_patient_name_not_null",
+          "value": "NOT NULL patient_name"
+        },
+        "billings_date_not_null": {
+          "name": "billings_date_not_null",
+          "value": "NOT NULL date"
+        },
+        "billings_bill_type_not_null": {
+          "name": "billings_bill_type_not_null",
+          "value": "NOT NULL bill_type"
+        },
+        "billings_items_not_null": {
+          "name": "billings_items_not_null",
+          "value": "NOT NULL items"
+        },
+        "billings_subtotal_not_null": {
+          "name": "billings_subtotal_not_null",
+          "value": "NOT NULL subtotal"
+        },
+        "billings_grand_total_not_null": {
+          "name": "billings_grand_total_not_null",
+          "value": "NOT NULL grand_total"
+        },
+        "billings_payment_details_not_null": {
+          "name": "billings_payment_details_not_null",
+          "value": "NOT NULL payment_details"
+        },
+        "billings_dispensing_location_id_not_null": {
+          "name": "billings_dispensing_location_id_not_null",
+          "value": "NOT NULL dispensing_location_id"
+        },
+        "billings_is_dispensed_not_null": {
+          "name": "billings_is_dispensed_not_null",
+          "value": "NOT NULL is_dispensed"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.internal_orders": {
+      "name": "internal_orders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "date": {
+          "name": "date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "requesting_location_id": {
+          "name": "requesting_location_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "items": {
+          "name": "items",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Pending'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "internal_orders_id_not_null": {
+          "name": "internal_orders_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "internal_orders_date_not_null": {
+          "name": "internal_orders_date_not_null",
+          "value": "NOT NULL date"
+        },
+        "internal_orders_requesting_location_id_not_null": {
+          "name": "internal_orders_requesting_location_id_not_null",
+          "value": "NOT NULL requesting_location_id"
+        },
+        "internal_orders_items_not_null": {
+          "name": "internal_orders_items_not_null",
+          "value": "NOT NULL items"
+        },
+        "internal_orders_status_not_null": {
+          "name": "internal_orders_status_not_null",
+          "value": "NOT NULL status"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.stock_take_sessions": {
+      "name": "stock_take_sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "date": {
+          "name": "date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "location_id": {
+          "name": "location_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Ongoing'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "stock_take_sessions_id_not_null": {
+          "name": "stock_take_sessions_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "stock_take_sessions_date_not_null": {
+          "name": "stock_take_sessions_date_not_null",
+          "value": "NOT NULL date"
+        },
+        "stock_take_sessions_location_id_not_null": {
+          "name": "stock_take_sessions_location_id_not_null",
+          "value": "NOT NULL location_id"
+        },
+        "stock_take_sessions_status_not_null": {
+          "name": "stock_take_sessions_status_not_null",
+          "value": "NOT NULL status"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.local_purchase_orders": {
+      "name": "local_purchase_orders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "lpo_number": {
+          "name": "lpo_number",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendor_id": {
+          "name": "vendor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendor_name": {
+          "name": "vendor_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "items": {
+          "name": "items",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "grand_total": {
+          "name": "grand_total",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Draft'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "local_purchase_orders_id_not_null": {
+          "name": "local_purchase_orders_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "local_purchase_orders_lpo_number_not_null": {
+          "name": "local_purchase_orders_lpo_number_not_null",
+          "value": "NOT NULL lpo_number"
+        },
+        "local_purchase_orders_vendor_id_not_null": {
+          "name": "local_purchase_orders_vendor_id_not_null",
+          "value": "NOT NULL vendor_id"
+        },
+        "local_purchase_orders_vendor_name_not_null": {
+          "name": "local_purchase_orders_vendor_name_not_null",
+          "value": "NOT NULL vendor_name"
+        },
+        "local_purchase_orders_date_not_null": {
+          "name": "local_purchase_orders_date_not_null",
+          "value": "NOT NULL date"
+        },
+        "local_purchase_orders_items_not_null": {
+          "name": "local_purchase_orders_items_not_null",
+          "value": "NOT NULL items"
+        },
+        "local_purchase_orders_grand_total_not_null": {
+          "name": "local_purchase_orders_grand_total_not_null",
+          "value": "NOT NULL grand_total"
+        },
+        "local_purchase_orders_status_not_null": {
+          "name": "local_purchase_orders_status_not_null",
+          "value": "NOT NULL status"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.logs": {
+      "name": "logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_display_name": {
+          "name": "user_display_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "details": {
+          "name": "details",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "logs_id_not_null": {
+          "name": "logs_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "logs_timestamp_not_null": {
+          "name": "logs_timestamp_not_null",
+          "value": "NOT NULL \"timestamp\""
+        },
+        "logs_user_id_not_null": {
+          "name": "logs_user_id_not_null",
+          "value": "NOT NULL user_id"
+        },
+        "logs_user_display_name_not_null": {
+          "name": "logs_user_display_name_not_null",
+          "value": "NOT NULL user_display_name"
+        },
+        "logs_action_not_null": {
+          "name": "logs_action_not_null",
+          "value": "NOT NULL action"
+        },
+        "logs_details_not_null": {
+          "name": "logs_details_not_null",
+          "value": "NOT NULL details"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.procurement_sessions": {
+      "name": "procurement_sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Draft'"
+        },
+        "procurement_list": {
+          "name": "procurement_list",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "vendor_quotes": {
+          "name": "vendor_quotes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "lpo_quantities": {
+          "name": "lpo_quantities",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "procurement_sessions_id_not_null": {
+          "name": "procurement_sessions_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "procurement_sessions_created_at_not_null": {
+          "name": "procurement_sessions_created_at_not_null",
+          "value": "NOT NULL created_at"
+        },
+        "procurement_sessions_status_not_null": {
+          "name": "procurement_sessions_status_not_null",
+          "value": "NOT NULL status"
+        },
+        "procurement_sessions_procurement_list_not_null": {
+          "name": "procurement_sessions_procurement_list_not_null",
+          "value": "NOT NULL procurement_list"
+        },
+        "procurement_sessions_vendor_quotes_not_null": {
+          "name": "procurement_sessions_vendor_quotes_not_null",
+          "value": "NOT NULL vendor_quotes"
+        },
+        "procurement_sessions_lpo_quantities_not_null": {
+          "name": "procurement_sessions_lpo_quantities_not_null",
+          "value": "NOT NULL lpo_quantities"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.services": {
+      "name": "services",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fee": {
+          "name": "fee",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "services_id_not_null": {
+          "name": "services_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "services_name_not_null": {
+          "name": "services_name_not_null",
+          "value": "NOT NULL name"
+        },
+        "services_fee_not_null": {
+          "name": "services_fee_not_null",
+          "value": "NOT NULL fee"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.settings": {
+      "name": "settings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "settings_id_not_null": {
+          "name": "settings_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "settings_value_not_null": {
+          "name": "settings_value_not_null",
+          "value": "NOT NULL value"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.stocks": {
+      "name": "stocks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "batch_id": {
+          "name": "batch_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "location_id": {
+          "name": "location_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "current_stock_quantity": {
+          "name": "current_stock_quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "expiry_date": {
+          "name": "expiry_date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "stocks_item_id_items_id_fk": {
+          "name": "stocks_item_id_items_id_fk",
+          "tableFrom": "stocks",
+          "tableTo": "items",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "stocks_id_not_null": {
+          "name": "stocks_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "stocks_item_id_not_null": {
+          "name": "stocks_item_id_not_null",
+          "value": "NOT NULL item_id"
+        },
+        "stocks_batch_id_not_null": {
+          "name": "stocks_batch_id_not_null",
+          "value": "NOT NULL batch_id"
+        },
+        "stocks_location_id_not_null": {
+          "name": "stocks_location_id_not_null",
+          "value": "NOT NULL location_id"
+        },
+        "stocks_current_stock_quantity_not_null": {
+          "name": "stocks_current_stock_quantity_not_null",
+          "value": "NOT NULL current_stock_quantity"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.items": {
+      "name": "items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "item_code": {
+          "name": "item_code",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generic_name": {
+          "name": "generic_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "brand_name": {
+          "name": "brand_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "formulation": {
+          "name": "formulation",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "strength_value": {
+          "name": "strength_value",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "strength_unit": {
+          "name": "strength_unit",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "concentration_value": {
+          "name": "concentration_value",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "concentration_unit": {
+          "name": "concentration_unit",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "package_size_value": {
+          "name": "package_size_value",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "package_size_unit": {
+          "name": "package_size_unit",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_of_measure": {
+          "name": "unit_of_measure",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dispensary_reorder_level": {
+          "name": "dispensary_reorder_level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "bulk_store_reorder_level": {
+          "name": "bulk_store_reorder_level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "unit_cost": {
+          "name": "unit_cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "selling_price": {
+          "name": "selling_price",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "items_item_code_unique": {
+          "columns": [
+            "item_code"
+          ],
+          "nullsNotDistinct": false,
+          "name": "items_item_code_unique"
+        }
+      },
+      "checkConstraints": {
+        "items_id_not_null": {
+          "name": "items_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "items_item_code_not_null": {
+          "name": "items_item_code_not_null",
+          "value": "NOT NULL item_code"
+        },
+        "items_generic_name_not_null": {
+          "name": "items_generic_name_not_null",
+          "value": "NOT NULL generic_name"
+        },
+        "items_formulation_not_null": {
+          "name": "items_formulation_not_null",
+          "value": "NOT NULL formulation"
+        },
+        "items_category_not_null": {
+          "name": "items_category_not_null",
+          "value": "NOT NULL category"
+        },
+        "items_unit_of_measure_not_null": {
+          "name": "items_unit_of_measure_not_null",
+          "value": "NOT NULL unit_of_measure"
+        },
+        "items_dispensary_reorder_level_not_null": {
+          "name": "items_dispensary_reorder_level_not_null",
+          "value": "NOT NULL dispensary_reorder_level"
+        },
+        "items_bulk_store_reorder_level_not_null": {
+          "name": "items_bulk_store_reorder_level_not_null",
+          "value": "NOT NULL bulk_store_reorder_level"
+        },
+        "items_unit_cost_not_null": {
+          "name": "items_unit_cost_not_null",
+          "value": "NOT NULL unit_cost"
+        },
+        "items_selling_price_not_null": {
+          "name": "items_selling_price_not_null",
+          "value": "NOT NULL selling_price"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.stock_take_items": {
+      "name": "stock_take_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_name": {
+          "name": "item_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "batch_id": {
+          "name": "batch_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expiry_date": {
+          "name": "expiry_date",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "system_qty": {
+          "name": "system_qty",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "physical_qty": {
+          "name": "physical_qty",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "variance": {
+          "name": "variance",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "stock_take_items_session_id_stock_take_sessions_id_fk": {
+          "name": "stock_take_items_session_id_stock_take_sessions_id_fk",
+          "tableFrom": "stock_take_items",
+          "tableTo": "stock_take_sessions",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "stock_take_items_id_not_null": {
+          "name": "stock_take_items_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "stock_take_items_session_id_not_null": {
+          "name": "stock_take_items_session_id_not_null",
+          "value": "NOT NULL session_id"
+        },
+        "stock_take_items_item_id_not_null": {
+          "name": "stock_take_items_item_id_not_null",
+          "value": "NOT NULL item_id"
+        },
+        "stock_take_items_item_name_not_null": {
+          "name": "stock_take_items_item_name_not_null",
+          "value": "NOT NULL item_name"
+        },
+        "stock_take_items_batch_id_not_null": {
+          "name": "stock_take_items_batch_id_not_null",
+          "value": "NOT NULL batch_id"
+        },
+        "stock_take_items_expiry_date_not_null": {
+          "name": "stock_take_items_expiry_date_not_null",
+          "value": "NOT NULL expiry_date"
+        },
+        "stock_take_items_system_qty_not_null": {
+          "name": "stock_take_items_system_qty_not_null",
+          "value": "NOT NULL system_qty"
+        },
+        "stock_take_items_physical_qty_not_null": {
+          "name": "stock_take_items_physical_qty_not_null",
+          "value": "NOT NULL physical_qty"
+        },
+        "stock_take_items_variance_not_null": {
+          "name": "stock_take_items_variance_not_null",
+          "value": "NOT NULL variance"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'cashier'"
+        },
+        "location_id": {
+          "name": "location_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'all'"
+        },
+        "disabled": {
+          "name": "disabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_username_unique": {
+          "columns": [
+            "username"
+          ],
+          "nullsNotDistinct": false,
+          "name": "users_username_unique"
+        }
+      },
+      "checkConstraints": {
+        "users_id_not_null": {
+          "name": "users_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "users_username_not_null": {
+          "name": "users_username_not_null",
+          "value": "NOT NULL username"
+        },
+        "users_display_name_not_null": {
+          "name": "users_display_name_not_null",
+          "value": "NOT NULL display_name"
+        },
+        "users_password_hash_not_null": {
+          "name": "users_password_hash_not_null",
+          "value": "NOT NULL password_hash"
+        },
+        "users_role_not_null": {
+          "name": "users_role_not_null",
+          "value": "NOT NULL role"
+        },
+        "users_location_id_not_null": {
+          "name": "users_location_id_not_null",
+          "value": "NOT NULL location_id"
+        },
+        "users_disabled_not_null": {
+          "name": "users_disabled_not_null",
+          "value": "NOT NULL disabled"
+        },
+        "users_created_at_not_null": {
+          "name": "users_created_at_not_null",
+          "value": "NOT NULL created_at"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.vendors": {
+      "name": "vendors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_person": {
+          "name": "contact_person",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "vendors_id_not_null": {
+          "name": "vendors_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "vendors_name_not_null": {
+          "name": "vendors_name_not_null",
+          "value": "NOT NULL name"
+        },
+        "vendors_email_not_null": {
+          "name": "vendors_email_not_null",
+          "value": "NOT NULL email"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.price_history": {
+      "name": "price_history",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price": {
+          "name": "price",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "price_history_item_id_items_id_fk": {
+          "name": "price_history_item_id_items_id_fk",
+          "tableFrom": "price_history",
+          "tableTo": "items",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "price_history_id_not_null": {
+          "name": "price_history_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "price_history_item_id_not_null": {
+          "name": "price_history_item_id_not_null",
+          "value": "NOT NULL item_id"
+        },
+        "price_history_date_not_null": {
+          "name": "price_history_date_not_null",
+          "value": "NOT NULL date"
+        },
+        "price_history_type_not_null": {
+          "name": "price_history_type_not_null",
+          "value": "NOT NULL type"
+        },
+        "price_history_price_not_null": {
+          "name": "price_history_price_not_null",
+          "value": "NOT NULL price"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.patients": {
+      "name": "patients",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "patient_number": {
+          "name": "patient_number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date_of_birth": {
+          "name": "date_of_birth",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gender": {
+          "name": "gender",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "patients_patient_number_unique": {
+          "columns": [
+            "patient_number"
+          ],
+          "nullsNotDistinct": false,
+          "name": "patients_patient_number_unique"
+        }
+      },
+      "checkConstraints": {
+        "patients_id_not_null": {
+          "name": "patients_id_not_null",
+          "value": "NOT NULL id"
+        },
+        "patients_patient_number_not_null": {
+          "name": "patients_patient_number_not_null",
+          "value": "NOT NULL patient_number"
+        },
+        "patients_name_not_null": {
+          "name": "patients_name_not_null",
+          "value": "NOT NULL name"
+        },
+        "patients_date_of_birth_not_null": {
+          "name": "patients_date_of_birth_not_null",
+          "value": "NOT NULL date_of_birth"
+        },
+        "patients_gender_not_null": {
+          "name": "patients_gender_not_null",
+          "value": "NOT NULL gender"
+        },
+        "patients_created_at_not_null": {
+          "name": "patients_created_at_not_null",
+          "value": "NOT NULL created_at"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {}
+  }
+}

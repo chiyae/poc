@@ -1,0 +1,142 @@
+
+"use client";
+
+import {
+    SidebarContext,
+    SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "./theme-toggle"
+import { Home, LogOut, Settings } from "lucide-react"
+import Link from "next/link"
+import { useContext, useEffect, useState } from "react";
+import { useAuth } from "@/context/auth-provider";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import Logo from "./logo";
+import { Skeleton } from "./ui/skeleton";
+
+type DashboardHeaderProps = {
+    title: string;
+    user: {
+        name: string;
+        role: string;
+        avatarUrl?: string;
+    }
+    isLoading?: boolean;
+}
+
+function HeaderActions({ user, isLoading }: { user: DashboardHeaderProps['user'], isLoading?: boolean }) {
+    const avatarFallback = user.name.split(' ').map(n => n[0]).join('');
+    const { logout } = useAuth();
+    const router = useRouter();
+    const { toast } = useToast();
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            toast({ title: "Logged Out", description: "You have been successfully signed out." });
+            router.push('/login');
+        } catch (error) {
+            console.error("Logout failed:", error);
+            toast({
+                variant: "destructive",
+                title: "Logout Failed",
+                description: "An error occurred while signing out. Please try again.",
+            });
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center gap-4">
+                <Skeleton className="h-10 w-10" />
+                <Skeleton className="h-10 w-10" />
+                <Skeleton className="h-10 w-10 rounded-full" />
+            </div>
+        )
+    }
+
+    return (
+        <div className="flex items-center gap-4">
+            <Link href="/" passHref>
+                <Button variant="ghost" size="icon" aria-label="Home">
+                    <Home className="h-5 w-5" />
+                </Button>
+            </Link>
+            <ThemeToggle />
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                        <Avatar className="h-8 w-8">
+                            {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
+                            <AvatarFallback className="text-[10px]">{avatarFallback}</AvatarFallback>
+                        </Avatar>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                            <p className="text-sm font-medium leading-none">{user.name}</p>
+                            <p className="text-xs leading-none text-muted-foreground capitalize">{user.role}</p>
+                        </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                        <DropdownMenuItem asChild>
+                            <Link href="/settings/dashboard">
+                                <Settings className="mr-2 h-4 w-4" />
+                                <span>Settings</span>
+                            </Link>
+                        </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Logout</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    )
+}
+
+export default function DashboardHeader({ title, user, isLoading }: DashboardHeaderProps) {
+    const [mounted, setMounted] = useState(false);
+    const sidebarContext = useContext(SidebarContext);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // This prevents a hydration mismatch by ensuring the header content (which depends on client-side state) 
+    // is only rendered on the client.
+    if (!mounted) {
+        return (
+            <header className="sticky top-0 z-10 flex h-12 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+                {sidebarContext && <SidebarTrigger className="md:hidden" />}
+                <h1 className="text-base font-semibold md:text-xl">{title}</h1>
+            </header>
+        );
+    }
+
+    return (
+        <header className="sticky top-0 z-10 flex h-12 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
+            <div className="flex items-center gap-4">
+                {sidebarContext && <SidebarTrigger />}
+                <h1 className="text-base font-semibold md:text-xl whitespace-nowrap">{title}</h1>
+            </div>
+
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                <Link href="/">
+                    <Logo />
+                </Link>
+            </div>
+
+            <HeaderActions user={user} isLoading={isLoading} />
+        </header>
+    )
+}
+

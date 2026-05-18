@@ -1,0 +1,110 @@
+
+'use client';
+
+import * as React from 'react';
+import dynamic from 'next/dynamic';
+import { ColumnDef, flexRender, getCoreRowModel, getPaginationRowModel, getSortedRowModel, SortingState, useReactTable } from '@tanstack/react-table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import type { LocalPurchaseOrder } from '@/lib/types';
+import { format } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useSettings } from '@/context/settings-provider';
+import { useToast } from '@/hooks/use-toast';
+import { LpoDocument } from '@/components/procurement/lpo-document';
+import { Printer } from 'lucide-react';
+import LpoPdfDocument from '@/components/procurement/lpo-pdf-document';
+import { getLocalPurchaseOrders, updateLocalPurchaseOrder } from '@/app/actions/index';
+import { useQuery } from '@/hooks/use-query';
+
+const PDFViewer = dynamic(
+  () => import('@react-pdf/renderer').then((mod) => mod.PDFViewer),
+  { ssr: false, loading: () => <Skeleton className="h-full w-full" /> }
+);
+
+export default function LocalPurchaseOrdersPage() {
+  const { toast } = useToast();
+  const { settings, formatCurrency } = useSettings();
+
+  const { data: lposData, isLoading, refetch } = useQuery<{ lpos: LocalPurchaseOrder[]; totalCount: number }>(() => getLocalPurchaseOrders() as any, []);
+  const lpos = lposData?.lpos || [];
+
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [selectedLpo, setSelectedLpo] = React.useState<LocalPurchaseOrder | null>(null);
+  const [isLpoOpen, setIsLpoOpen] = React.useState(false);
+  const [isUpdating, setIsUpdating] = React.useState(false);
+  const [isPdfViewerOpen, setIsPdfViewerOpen] = React.useState(false);
+
+  const handleUpdateStatus = async (lpoId: string, status: 'Sent' | 'Completed' | 'Rejected') => {
+    setIsUpdating(true);
+    try {
+      await updateLocalPurchaseOrder(lpoId, { status });
+      toast({ title: 'LPO Status Updated', description: `LPO ${lpoId} marked as ${status}.` });
+      setIsLpoOpen(false);
+      refetch();
+    } catch (error) {
+      console.error("Failed to update LPO status:", error);
+      toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update LPO status.' });
+    } finally {
+      setIsUpdating(false);
+    }
+  }
+
+  const columns: ColumnDef<LocalPurchaseOrder>[] = [
+    { accessorKey: 'lpoNumber', header: 'LPO Number' },
+    { accessorKey: 'date', header: 'Date', cell: ({ row }) => format(new Date(row.getValue('date')), 'dd/MM/yyyy') },
+    { accessorKey: 'vendorName', header: 'Vendor' },
+    { accessorKey: 'grandTotal', header: () => <div className="text-right">Amount</div>, cell: ({ row }) => <div className="text-right font-medium">{formatCurrency(row.getValue('grandTotal'))}</div> },
+    {
+      accessorKey: 'status', header: 'Status',
+      cell: ({ row }) => {
+        const status = row.getValue('status') as LocalPurchaseOrder['status'];
+        const variant: 'default' | 'secondary' | 'destructive' | 'outline' = status === 'Completed' ? 'default' : status === 'Sent' ? 'outline' : status === 'Rejected' ? 'destructive' : 'secondary';
+        return <Badge variant={variant} className="capitalize">{status}</Badge>;
+      },
+    },
+    { id: 'actions', cell: ({ row }) => <Button variant="ghost" onClick={() => { setSelectedLpo(row.original); setIsLpoOpen(true); }}>View LPO</Button> },
+  ];
+
+  const table = useReactTable({ data: lpos ?? [], columns, onSortingChange: setSorting, getCoreRowModel: getCoreRowModel(), getPaginationRowModel: getPaginationRowModel(), getSortedRowModel: getSortedRowModel(), state: { sorting } });
+
+  return (
+    <>
+      <div className="w-full space-y-6">
+        <header className="space-y-1.5"><h1 className="text-3xl font-bold tracking-tight">Local Purchase Orders</h1><p className="text-muted-foreground">View, track, and manage all generated LPOs.</p></header>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>{table.getHeaderGroups().map(hg => (<TableRow key={hg.id}>{hg.headers.map(h => (<TableHead key={h.id}>{h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
+            <TableBody>
+              {isLoading && Array.from({ length: 5 }).map((_, i) => (<TableRow key={i}><TableCell colSpan={columns.length}><Skeleton className="h-8 w-full" /></TableCell></TableRow>))}
+              {!isLoading && table.getRowModel().rows?.length ? (table.getRowModel().rows.map(row => (<TableRow key={row.id}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))) : null}
+              {!isLoading && !table.getRowModel().rows.length ? (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No LPOs generated yet.</TableCell></TableRow>) : null}
+            </TableBody>
+          </Table>
+        </div>
+        {selectedLpo && (
+          <Dialog open={isLpoOpen} onOpenChange={setIsLpoOpen}>
+            <DialogContent className="sm:max-w-4xl p-0">
+              <div className="p-6 pb-0"><DialogHeader><DialogTitle>LPO Details: {selectedLpo.lpoNumber}</DialogTitle><DialogDescription>Review the LPO and update its status.</DialogDescription></DialogHeader></div>
+              <LpoDocument lpo={selectedLpo} />
+              <DialogFooter className="sm:justify-between p-6 pt-0">
+                <div className="flex gap-2">{selectedLpo.status === 'Draft' && (<Button variant="destructive" onClick={() => handleUpdateStatus(selectedLpo.id, 'Rejected')} disabled={isUpdating}>Reject</Button>)}<Button variant="secondary" onClick={() => setIsPdfViewerOpen(true)}><Printer className="mr-2 h-4 w-4" />View & Print PDF</Button></div>
+                <div className="flex gap-2"><DialogClose asChild><Button variant="outline">Close</Button></DialogClose>{selectedLpo.status === 'Draft' && (<Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Sent')} disabled={isUpdating}>{isUpdating ? 'Updating...' : 'Mark as Sent'}</Button>)}{selectedLpo.status === 'Sent' && (<Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Completed')} disabled={isUpdating}>{isUpdating ? 'Updating...' : 'Mark as Completed'}</Button>)}</div>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+        {selectedLpo && (
+          <Dialog open={isPdfViewerOpen} onOpenChange={setIsPdfViewerOpen}>
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+              <DialogHeader className="p-6 pb-4 border-b"><DialogTitle>PDF Preview: {selectedLpo.lpoNumber}</DialogTitle><DialogDescription>Use your browser's print functionality to save or print.</DialogDescription></DialogHeader>
+              <div className="flex-1 w-full h-full"><PDFViewer width="100%" height="100%"><LpoPdfDocument lpo={selectedLpo} settings={settings} formatCurrency={formatCurrency} /></PDFViewer></div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+    </>
+  );
+}

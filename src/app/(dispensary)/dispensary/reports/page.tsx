@@ -1,0 +1,114 @@
+
+'use client';
+
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DateRange } from 'react-day-picker';
+import { subDays, isWithinInterval } from 'date-fns';
+import type { Bill, BillItem } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import { getBillingsByLocation } from '@/app/actions/index';
+import { useQuery } from '@/hooks/use-query';
+
+export default function DispensaryReportsPage() {
+    const router = useRouter();
+
+    const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+        from: subDays(new Date(), 29),
+        to: new Date(),
+    });
+
+    const { data: billsData, isLoading } = useQuery<{ billings: Bill[]; totalCount: number }>(() => getBillingsByLocation('dispensary') as any, []);
+    const allBills = billsData?.billings || [];
+
+    const itemMovementReport = React.useMemo(() => {
+        if (!allBills || !dateRange?.from || !dateRange?.to) {
+            return [];
+        }
+
+        const filteredBills = allBills.filter(bill => isWithinInterval(new Date(bill.date), { start: dateRange.from!, end: dateRange.to! }));
+
+        const itemCounts = filteredBills.reduce((acc, bill) => {
+            bill.items.forEach(item => {
+                if (acc[item.itemId]) {
+                    acc[item.itemId].quantity += item.quantity;
+                } else {
+                    acc[item.itemId] = {
+                        itemName: item.itemName,
+                        quantity: item.quantity
+                    }
+                }
+            });
+            return acc;
+        }, {} as Record<string, { itemName: string, quantity: number }>);
+
+        return Object.entries(itemCounts)
+            .map(([itemId, data]) => ({ ...data, itemId }))
+            .sort((a, b) => b.quantity - a.quantity);
+
+    }, [allBills, dateRange]);
+
+
+    return (
+        <div className="space-y-6">
+            <header className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="sr-only">Back</span>
+                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Dispensary Reports</h1>
+                        <p className="text-muted-foreground">
+                            Analyze item movement and sales from the dispensary.
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Item Dispensing Report</CardTitle>
+                    <CardDescription>
+                        A summary of the total quantity of each item dispensed within the selected period.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <DateRangePicker date={dateRange} onDateChange={setDateRange} />
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-3/4">Item Name</TableHead>
+                                <TableHead className="text-right">Total Quantity Dispensed</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading && Array.from({ length: 5 }).map((_, i) => (
+                                <TableRow key={i}><TableCell colSpan={2}><Skeleton className='h-8 w-full' /></TableCell></TableRow>
+                            ))}
+                            {!isLoading && itemMovementReport.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={2} className="h-24 text-center">
+                                        No items dispensed in this period.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                itemMovementReport.map((item) => (
+                                    <TableRow key={item.itemId}>
+                                        <TableCell className="font-medium">{item.itemName}</TableCell>
+                                        <TableCell className="text-right font-bold">{item.quantity}</TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}

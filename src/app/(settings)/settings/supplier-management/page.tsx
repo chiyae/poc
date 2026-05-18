@@ -1,0 +1,186 @@
+
+'use client';
+
+import * as React from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import type { Vendor } from '@/lib/types';
+import { getVendors, createVendor, updateVendor } from '@/app/actions/index';
+import { useQuery } from '@/hooks/use-query';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { VendorForm } from '@/components/vendor-form';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
+
+export default function SupplierManagementPage() {
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const { data: vendors, isLoading: areVendorsLoading, refetch } = useQuery<Vendor[]>(
+    () => getVendors() as any,
+    []
+  );
+
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [selectedVendor, setSelectedVendor] = React.useState<Vendor | null>(null);
+
+  const [isClient, setIsClient] = React.useState(false);
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const isLoading = areVendorsLoading;
+
+  const handleOpenDialog = (vendor: Vendor | null) => {
+    setSelectedVendor(vendor);
+    setIsDialogOpen(true);
+  }
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedVendor(null);
+  }
+
+  const handleFormSubmit = async (vendorData: Omit<Vendor, 'id'>) => {
+    if (selectedVendor) { // Editing
+      try {
+        await updateVendor(selectedVendor.id, vendorData);
+        handleCloseDialog();
+        refetch();
+        toast({
+          title: "Vendor Updated",
+          description: `Successfully updated ${vendorData.name}.`
+        })
+      } catch (error) {
+        console.error("Error updating vendor:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to update vendor. Please try again."
+        })
+      }
+    } else { // Adding
+      try {
+        await createVendor(vendorData as any);
+        handleCloseDialog();
+        refetch();
+        toast({
+          title: "Vendor Added",
+          description: `Successfully added ${vendorData.name}.`
+        })
+      } catch (error) {
+        console.error("Error adding vendor:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to add vendor. Please try again."
+        })
+      }
+    }
+  }
+
+  return (
+    <div className="w-full space-y-6">
+      <div className="flex items-start justify-between">
+        <header className="space-y-1.5">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4" />
+              <span className="sr-only">Back</span>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Supplier Management</h1>
+              <p className="text-muted-foreground">Add, view, and manage suppliers.</p>
+            </div>
+          </div>
+        </header>
+        {isClient && (
+          <Button onClick={() => handleOpenDialog(null)}>Add New Vendor</Button>
+        )}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>All Suppliers</CardTitle>
+          <CardDescription>
+            A list of all registered vendors in the system.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Vendor Name</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading && Array.from({ length: 3 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={3}><Skeleton className="h-8 w-full" /></TableCell>
+                </TableRow>
+              ))}
+              {!isLoading && vendors && vendors.map(vendor => (
+                <TableRow key={vendor.id}>
+                  <TableCell className="font-medium">{vendor.name}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-sm">{vendor.email}</span>
+                      <span className="text-xs text-muted-foreground">{vendor.contactPerson} ({vendor.phone})</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(vendor)}>Edit</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {!isLoading && (!vendors || vendors.length === 0) && (
+            <p className="py-12 text-center text-muted-foreground">No vendors found. Add one to get started.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {isClient && (
+        <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{selectedVendor ? `Edit Supplier: ${selectedVendor.name}` : 'Add New Supplier'}</DialogTitle>
+              <DialogDescription>
+                {selectedVendor ? 'Update the details for this vendor.' : 'Fill out the form below to add a new vendor.'}
+              </DialogDescription>
+            </DialogHeader>
+            <VendorForm
+              vendor={selectedVendor}
+              onSubmit={handleFormSubmit}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,120 @@
+
+'use client';
+
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { RequestStockForm } from '@/components/request-stock-form';
+import type { Item, InternalOrder, Stock } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, ListPlus, ArrowLeft } from 'lucide-react';
+import { ManuallyAddItemDialog } from '@/components/procurement/manually-add-item-dialog';
+import { formatItemName } from '@/lib/utils';
+import { getItems, getStocksByLocation, createInternalOrder } from '@/app/actions/index';
+import { useQuery } from '@/hooks/use-query';
+
+type ItemForRequest = { id: string; name: string; bulkStoreQty: number };
+
+export default function RequestStockPage() {
+    const router = useRouter();
+    const { toast } = useToast();
+
+    const [requestItems, setRequestItems] = React.useState<ItemForRequest[]>([]);
+    const [isFormVisible, setIsFormVisible] = React.useState(false);
+    const [isManualAddOpen, setIsManualAddOpen] = React.useState(false);
+
+    const { data: itemsData, isLoading: isLoadingItems } = useQuery<{ items: Item[]; totalCount: number }>(() => getItems() as any, []);
+    const allItems = itemsData?.items || [];
+    const { data: dispensaryStocksData, isLoading: isLoadingDispensaryStock } = useQuery<{ stocks: Stock[]; totalCount: number }>(() => getStocksByLocation('dispensary') as any, []);
+    const dispensaryStocks = dispensaryStocksData?.stocks || [];
+    const { data: bulkStocksData, isLoading: isLoadingBulkStock } = useQuery<{ stocks: Stock[]; totalCount: number }>(() => getStocksByLocation('bulk-store') as any, []);
+    const bulkStocks = bulkStocksData?.stocks || [];
+
+    const isLoading = isLoadingItems || isLoadingDispensaryStock || isLoadingBulkStock;
+
+    const getBulkStockForItem = React.useCallback((itemId: string): number => {
+        if (!bulkStocks) return 0;
+        return bulkStocks.filter(s => s.itemId === itemId).reduce((sum, s) => sum + s.currentStockQuantity, 0);
+    }, [bulkStocks]);
+
+    const handleAutoRequest = () => {
+        if (!allItems || !dispensaryStocks) {
+            toast({ title: "Data still loading...", description: "Please wait a moment and try again." });
+            return;
+        }
+        const lowStockItems = allItems.filter(item => {
+            const totalDispensaryStock = dispensaryStocks.filter(s => s.itemId === item.id).reduce((sum, s) => sum + s.currentStockQuantity, 0);
+            return totalDispensaryStock < item.dispensaryReorderLevel;
+        }).map(item => ({ id: item.id, name: formatItemName(item), bulkStoreQty: getBulkStockForItem(item.id) }));
+
+        if (lowStockItems.length === 0) {
+            toast({ title: "No Low-Stock Items", description: "All items in the dispensary are currently above their reorder level." });
+            return;
+        }
+        setRequestItems(lowStockItems);
+        setIsFormVisible(true);
+    };
+
+    const handleManualAddItem = (item: Item) => {
+        setRequestItems(prev => {
+            if (prev.some(i => i.id === item.id)) return prev;
+            return [...prev, { id: item.id, name: formatItemName(item), bulkStoreQty: getBulkStockForItem(item.id) }];
+        });
+        setIsFormVisible(true);
+    }
+
+    const handleRequestStock = async (items: { itemId: string; quantity: number }[]) => {
+        try {
+            const newOrder: any = {
+                requestingLocationId: 'dispensary',
+                status: 'Pending',
+                items
+            };
+            await createInternalOrder(newOrder);
+            toast({ title: "Stock Request Submitted", description: `Order has been sent to the bulk store for processing.` });
+            router.push('/dispensary/inventory');
+        } catch (error) {
+            console.error("Failed to submit stock request:", error);
+            toast({ variant: 'destructive', title: "Submission Failed", description: "Could not submit the stock request." });
+        }
+    };
+
+    if (isFormVisible) {
+        return (
+            <Card className="max-w-4xl mx-auto">
+                <CardHeader>
+                    <div className="flex items-start justify-between">
+                        <div><CardTitle>Create Stock Request</CardTitle><CardDescription>Specify the quantities you need from the bulk store for the selected items. You can add more items manually.</CardDescription></div>
+                        <Button variant="outline" onClick={() => { setIsFormVisible(false); setRequestItems([]); }}><ArrowLeft className="mr-2 h-4 w-4" />Back to Mode Selection</Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <RequestStockForm selectedItems={requestItems} onSubmit={handleRequestStock} onCancel={() => { setIsFormVisible(false); setRequestItems([]); }} onAddItem={() => setIsManualAddOpen(true)} />
+                    <ManuallyAddItemDialog isOpen={isManualAddOpen} onOpenChange={setIsManualAddOpen} allItems={allItems || []} onItemSelected={handleManualAddItem} isLoading={isLoading} />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    return (
+        <div className='max-w-4xl mx-auto space-y-8'>
+            <header className="flex items-center gap-4">
+                <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}><ArrowLeft className="h-4 w-4" /><span className="sr-only">Back</span></Button>
+                <div><h1 className="text-3xl font-bold tracking-tight">Request New Stock</h1><p className="text-muted-foreground">Choose a method to build your stock request list.</p></div>
+            </header>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                    <CardHeader><AlertTriangle className="h-8 w-8 text-primary mb-2" /><CardTitle>Automatic Mode</CardTitle><CardDescription>Generate a request for all items in the dispensary that have fallen below their specified reorder level.</CardDescription></CardHeader>
+                    <CardContent><Button onClick={handleAutoRequest} disabled={isLoading} className="w-full">{isLoading ? 'Loading stock data...' : 'Request Low-Stock Items'}</Button></CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><ListPlus className="h-8 w-8 text-primary mb-2" /><CardTitle>Manual Mode</CardTitle><CardDescription>Manually search and select any item from the master list to add to your stock request.</CardDescription></CardHeader>
+                    <CardContent><Button onClick={() => setIsManualAddOpen(true)} disabled={isLoading} variant="outline" className="w-full">{isLoading ? 'Loading master list...' : 'Manually Select Items'}</Button></CardContent>
+                </Card>
+            </div>
+            <ManuallyAddItemDialog isOpen={isManualAddOpen} onOpenChange={setIsManualAddOpen} allItems={allItems || []} onItemSelected={handleManualAddItem} isLoading={isLoading} />
+        </div>
+    );
+}
