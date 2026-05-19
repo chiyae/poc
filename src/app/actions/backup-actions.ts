@@ -12,12 +12,21 @@ const PG_DUMP_PATH = 'C:\\Program Files\\PostgreSQL\\18\\bin\\pg_dump.exe';
 const BACKUP_DIR = path.join(process.cwd(), 'backups');
 
 // Ensure backup directory exists
-if (!fs.existsSync(BACKUP_DIR)) {
-    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+function ensureBackupDir() {
+    if (process.env.VERCEL) return false;
+    if (!fs.existsSync(BACKUP_DIR)) {
+        fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    }
+    return true;
 }
 
 export async function triggerDatabaseBackup() {
     await requireAuth(['admin']);
+
+    if (process.env.VERCEL) {
+        throw new Error('Local file system backups using pg_dump are not supported on Vercel.');
+    }
+    ensureBackupDir();
 
     const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/MPMCPOC';
     const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.sql`;
@@ -51,7 +60,7 @@ export async function triggerDatabaseBackup() {
 export async function getBackupHistory() {
     await requireAuth(['admin']);
 
-    if (!fs.existsSync(BACKUP_DIR)) return [];
+    if (process.env.VERCEL || !fs.existsSync(BACKUP_DIR)) return [];
 
     const files = fs.readdirSync(BACKUP_DIR);
     return files
@@ -97,8 +106,11 @@ export async function deleteBackup(filename: string) {
 const LAST_BACKUP_FILE = path.join(BACKUP_DIR, '.last-backup');
 
 export async function checkAndRunScheduledBackup() {
+    if (process.env.VERCEL) return { triggered: false };
+    
     // Only run if triggered from a valid admin context or as internal system task
     try {
+        ensureBackupDir();
         let lastBackupTime = 0;
         if (fs.existsSync(LAST_BACKUP_FILE)) {
             lastBackupTime = parseInt(fs.readFileSync(LAST_BACKUP_FILE, 'utf8'), 10);
