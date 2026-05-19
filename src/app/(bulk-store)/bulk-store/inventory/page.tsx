@@ -395,6 +395,7 @@ function BulkStoreInventoryContent() {
                   <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden">
                     <DialogHeader className="sr-only">
                       <DialogTitle>Search Master List</DialogTitle>
+                      <DialogDescription>Search and select an existing item from the master list to add to the Bulk Store inventory.</DialogDescription>
                     </DialogHeader>
                     <Command className="rounded-lg border shadow-md">
                       <CommandInput placeholder="Search Master List..." />

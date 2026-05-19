@@ -2,7 +2,8 @@
 
 import { db } from '@/db';
 import { users, sessions } from '@/db/schema';
-import { eq, and, gt } from 'drizzle-orm';
+import * as schema from '@/db/schema';
+import { eq, and, gt, sql } from 'drizzle-orm';
 import { cookies, headers } from 'next/headers';
 import { randomBytes, scryptSync } from 'crypto';
 
