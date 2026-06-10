@@ -92,6 +92,41 @@ export default function PatientManagementPage() {
     setIsClient(true);
   }, []);
 
+  const [printData, setPrintData] = React.useState<Patient[] | null>(null);
+  const [isPrintingAll, setIsPrintingAll] = React.useState(false);
+  const [isFetchingPrint, setIsFetchingPrint] = React.useState(false);
+
+  const handlePrintAll = async () => {
+    setIsFetchingPrint(true);
+    try {
+      const res = await getPatients() as any;
+      if (res?.patients) {
+        setPrintData(res.patients);
+        setIsPrintingAll(true);
+      }
+    } catch (err) {
+      console.error("Failed to fetch patients for printing:", err);
+      toast({
+        variant: "destructive",
+        title: "Print Error",
+        description: "Could not retrieve the complete patient registry."
+      });
+    } finally {
+      setIsFetchingPrint(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isPrintingAll && printData) {
+      const timer = setTimeout(() => {
+        window.print();
+        setIsPrintingAll(false);
+        setPrintData(null);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isPrintingAll, printData]);
+
   const handleOpenDialog = (patient: Patient | null) => {
     setSelectedPatient(patient);
     setIsDialogOpen(true);
@@ -235,7 +270,7 @@ export default function PatientManagementPage() {
 
   return (
     <PrintWrapper title="Patient Registry Report">
-      <div className="w-full space-y-6">
+      <div className={isPrintingAll ? "print:hidden w-full space-y-6" : "w-full space-y-6"}>
         <div className="flex items-start justify-between">
           <header className="space-y-1.5">
             <div className="flex items-center gap-4">
@@ -250,9 +285,21 @@ export default function PatientManagementPage() {
             </div>
           </header>
           <div className="flex items-center gap-2 hide-on-print">
-            <Button variant="outline" onClick={() => window.print()}>
-              <Printer className="mr-2 h-4 w-4" /> Print List
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isLoading || isFetchingPrint}>
+                  <Printer className="mr-2 h-4 w-4" /> {isFetchingPrint ? 'Preparing...' : 'Print...'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => window.print()}>
+                  Print Current Page
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handlePrintAll}>
+                  Print Entire Registry
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {isClient && (
               <Button onClick={() => handleOpenDialog(null)}>Register New Patient</Button>
             )}
@@ -391,6 +438,42 @@ export default function PatientManagementPage() {
           </Dialog>
         )}
       </div>
+      {isPrintingAll && printData && (
+        <div className="hidden print:block w-full">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-bold text-black border-b">Reg. Number</TableHead>
+                <TableHead className="font-bold text-black border-b">First Name</TableHead>
+                <TableHead className="font-bold text-black border-b">Last Name</TableHead>
+                <TableHead className="font-bold text-black border-b">Gender</TableHead>
+                <TableHead className="font-bold text-black border-b">Age</TableHead>
+                <TableHead className="font-bold text-black border-b">Phone</TableHead>
+                <TableHead className="font-bold text-black border-b">Address</TableHead>
+                <TableHead className="font-bold text-black border-b text-right">Points</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {printData.map((p) => {
+                const dob = new Date(p.dateOfBirth);
+                const age = differenceInYears(new Date(), dob);
+                return (
+                  <TableRow key={p.id} className="border-b">
+                    <TableCell className="font-mono py-2">{p.patientNumber}</TableCell>
+                    <TableCell className="py-2">{p.firstName}</TableCell>
+                    <TableCell className="py-2">{p.lastName}</TableCell>
+                    <TableCell className="py-2">{p.gender}</TableCell>
+                    <TableCell className="py-2">{age}</TableCell>
+                    <TableCell className="py-2">{p.phone}</TableCell>
+                    <TableCell className="py-2">{p.address}</TableCell>
+                    <TableCell className="py-2 text-right">{p.loyaltyPoints}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </PrintWrapper>
   );
 }

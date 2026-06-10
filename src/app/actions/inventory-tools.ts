@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { eq, desc, count, and } from 'drizzle-orm';
+import { eq, desc, count, and, asc, sql, gte } from 'drizzle-orm';
 import * as schema from '@/db/schema';
 import { logAction } from '@/lib/audit';
 import { serialize, serializeOne, formatItemName } from '@/lib/utils';
@@ -35,8 +35,41 @@ export async function getInternalOrders(params?: { limit?: number; offset?: numb
 
 export async function createInternalOrder(data: typeof schema.internalOrders.$inferInsert) {
     await requireAuth(['admin', 'pharmacy']);
-    const [row] = await db.insert(schema.internalOrders).values(data).returning();
-    return serializeOne(row);
+    
+    return await db.transaction(async (tx) => {
+        const [row] = await tx.insert(schema.internalOrders).values(data).returning();
+        
+        // Reserve stock
+        const type = data.type || 'Request';
+        const sourceLocation = type === 'Return' ? 'dispensary' : 'bulk-store';
+        const items = data.items as any[];
+        
+        if (items && Array.isArray(items)) {
+            for (const item of items) {
+                let remainingToReserve = item.quantity;
+                const sourceStocks = await tx.select().from(schema.stocks).where(
+                    and(
+                        eq(schema.stocks.itemId, item.itemId),
+                        eq(schema.stocks.locationId, sourceLocation)
+                    )
+                ).orderBy(asc(schema.stocks.expiryDate));
+
+                for (const batch of sourceStocks) {
+                    if (remainingToReserve <= 0) break;
+                    const available = batch.currentStockQuantity - batch.reservedStock;
+                    if (available > 0) {
+                        const reserveAmount = Math.min(available, remainingToReserve);
+                        await tx.update(schema.stocks)
+                            .set({ reservedStock: sql`${schema.stocks.reservedStock} + ${reserveAmount}` })
+                            .where(eq(schema.stocks.id, batch.id));
+                        remainingToReserve -= reserveAmount;
+                    }
+                }
+            }
+        }
+        
+        return serializeOne(row);
+    });
 }
 
 export async function updateInternalOrder(id: string, data: Partial<typeof schema.internalOrders.$inferInsert>) {
@@ -94,7 +127,7 @@ export async function issueInternalOrder(orderId: string, issueQuantities?: Reco
                         eq(schema.stocks.itemId, requestedItem.itemId),
                         eq(schema.stocks.locationId, sourceLocation)
                     )
-                );
+                ).orderBy(asc(schema.stocks.expiryDate));
 
                 const totalSourceStock = sourceStocks.reduce((sum, s) => sum + s.currentStockQuantity, 0);
 
@@ -116,7 +149,7 @@ export async function issueInternalOrder(orderId: string, issueQuantities?: Reco
                         eq(schema.stocks.itemId, issuedItem.itemId),
                         eq(schema.stocks.locationId, sourceLocation)
                     )
-                );
+                ).orderBy(asc(schema.stocks.expiryDate));
 
                 // FIFO issuance logic from source location
                 for (const sourceBatch of sourceStocks) {
@@ -125,10 +158,22 @@ export async function issueInternalOrder(orderId: string, issueQuantities?: Reco
                     const amountFromThisBatch = Math.min(sourceBatch.currentStockQuantity, remainingToIssue);
                     
                     if (amountFromThisBatch > 0) {
-                        // Decrease source stock
-                        await tx.update(schema.stocks)
-                            .set({ currentStockQuantity: sourceBatch.currentStockQuantity - amountFromThisBatch })
-                            .where(eq(schema.stocks.id, sourceBatch.id));
+                        // Decrease source stock and release reservation atomically
+                        const [updatedSource] = await tx.update(schema.stocks)
+                            .set({ 
+                                currentStockQuantity: sql`${schema.stocks.currentStockQuantity} - ${amountFromThisBatch}`,
+                                reservedStock: sql`GREATEST(0, ${schema.stocks.reservedStock} - ${amountFromThisBatch})`
+                            })
+                            .where(
+                                and(
+                                    eq(schema.stocks.id, sourceBatch.id),
+                                    gte(schema.stocks.currentStockQuantity, amountFromThisBatch)
+                                )
+                            ).returning();
+
+                        if (!updatedSource) {
+                            throw new Error(`Concurrency error: Stock for ${sourceBatch.batchId} changed while issuing.`);
+                        }
 
                         // Increase/Create target stock
                         const [targetBatch] = await tx.select().from(schema.stocks).where(
@@ -159,9 +204,14 @@ export async function issueInternalOrder(orderId: string, issueQuantities?: Reco
             }
 
             // 4. Update order status and final items
+            const isPartiallyIssued = finalIssuedItems.some(
+                (issuedItem, index) => issuedItem.quantity < orderData.items[index].quantity
+            );
+            const finalStatus = isPartiallyIssued ? 'Partially Issued' : 'Issued';
+
             const [finalOrder] = await tx.update(schema.internalOrders)
                 .set({ 
-                    status: 'Issued',
+                    status: finalStatus,
                     items: finalIssuedItems
                 })
                 .where(eq(schema.internalOrders.id, orderId))
@@ -363,8 +413,13 @@ export async function getLocalPurchaseOrders(params?: { limit?: number; offset?:
 }
 
 export async function createLocalPurchaseOrder(data: typeof schema.localPurchaseOrders.$inferInsert) {
-    await requireAuth(['admin', 'pharmacy']);
-    const [row] = await db.insert(schema.localPurchaseOrders).values(data).returning();
+    const user = await requireAuth(['admin', 'pharmacy']);
+    const dataWithUser = {
+        ...data,
+        preparedByUserId: user.id,
+        preparedByName: user.displayName,
+    };
+    const [row] = await db.insert(schema.localPurchaseOrders).values(dataWithUser).returning();
     return serializeOne(row);
 }
 
@@ -377,4 +432,62 @@ export async function updateLocalPurchaseOrder(id: string, data: Partial<typeof 
 export async function deleteLocalPurchaseOrder(id: string) {
     await requireAuth(['admin', 'pharmacy']);
     await db.delete(schema.localPurchaseOrders).where(eq(schema.localPurchaseOrders.id, id));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STOCK TAKE RECONCILIATION
+// ═══════════════════════════════════════════════════════════
+export async function commitStockTakeSession(sessionId: string) {
+    const user = await requireAuth(['admin', 'pharmacy']);
+    
+    return await db.transaction(async (tx) => {
+        const [session] = await tx.select().from(schema.stockTakeSessions).where(eq(schema.stockTakeSessions.id, sessionId));
+        if (!session) throw new Error("Stock Take Session not found.");
+        if (session.status === 'Completed') throw new Error("Session is already completed.");
+
+        const items = await tx.select().from(schema.stockTakeItems).where(eq(schema.stockTakeItems.sessionId, sessionId));
+
+        for (const item of items) {
+            // Find the stock record
+            const [stock] = await tx.select().from(schema.stocks).where(
+                and(
+                    eq(schema.stocks.itemId, item.itemId),
+                    eq(schema.stocks.batchId, item.batchId),
+                    eq(schema.stocks.locationId, session.locationId)
+                )
+            );
+
+            if (stock) {
+                // Update the stock to match the physical quantity
+                await tx.update(schema.stocks)
+                    .set({ currentStockQuantity: item.physicalQty })
+                    .where(eq(schema.stocks.id, stock.id));
+            } else if (item.physicalQty > 0) {
+                // If it didn't exist but we counted some, create it
+                let expiryDate = null;
+                if (item.expiryDate && item.expiryDate !== 'N/A') {
+                    const parsedDate = new Date(item.expiryDate);
+                    if (!isNaN(parsedDate.getTime())) {
+                        expiryDate = parsedDate;
+                    }
+                }
+                await tx.insert(schema.stocks).values({
+                    itemId: item.itemId,
+                    batchId: item.batchId,
+                    locationId: session.locationId,
+                    expiryDate: expiryDate,
+                    currentStockQuantity: item.physicalQty,
+                });
+            }
+        }
+
+        const [completedSession] = await tx.update(schema.stockTakeSessions)
+            .set({ status: 'Completed' })
+            .where(eq(schema.stockTakeSessions.id, sessionId))
+            .returning();
+            
+        await logAction(user, 'Commit Stock Take', { sessionId, locationId: session.locationId });
+        
+        return serializeOne(completedSession);
+    });
 }

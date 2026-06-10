@@ -42,7 +42,7 @@ export default function GeneralSettingsPage() {
     setIsClient(true);
   }, []);
 
-  const { data: settingsRow, isLoading, error } = useQuery(
+  const { data: settingsRow, isLoading, error, refetch } = useQuery(
     () => getSettings('clinic'),
     []
   );
@@ -68,11 +68,12 @@ export default function GeneralSettingsPage() {
           description: "Default clinic settings have been saved.",
         });
         refreshSettings();
+        refetch();
       }).catch(err => {
         console.error("Failed to create initial settings:", err);
       });
     }
-  }, [isLoading, settingsData, toast, refreshSettings]);
+  }, [isLoading, settingsData, toast, refreshSettings, refetch]);
 
 
   // React.useEffect to update form state when data loads
@@ -105,6 +106,7 @@ export default function GeneralSettingsPage() {
       });
 
       await refreshSettings();
+      await refetch();
 
       toast({
         title: "Clinic Information Updated",
@@ -126,6 +128,7 @@ export default function GeneralSettingsPage() {
       const current = settingsData || defaultSettings;
       await upsertSettings('clinic', { ...current, currency });
       await refreshSettings();
+      await refetch();
       toast({
         title: "Currency Settings Updated",
         description: `The default currency has been set to ${currency}.`,

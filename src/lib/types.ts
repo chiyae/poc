@@ -19,7 +19,7 @@ export interface ClinicSettings {
 }
 
 export type Location = 'Bulk Store' | 'Dispensary' | 'Billing';
-export type OrderStatus = 'Pending' | 'Approved' | 'Issued' | 'Rejected';
+export type OrderStatus = 'Pending' | 'Approved' | 'Issued' | 'Partially Issued' | 'Rejected';
 export type LpoStatus = 'Draft' | 'Sent' | 'Completed' | 'Rejected';
 export type PaymentMethod = 'Cash' | 'Mobile Money' | 'Bank' | 'Invoice';
 export type PaymentStatus = 'Paid' | 'Unpaid';
@@ -205,6 +205,8 @@ export interface LocalPurchaseOrder {
   items: LocalPurchaseOrderItem[];
   grandTotal: number;
   status: LpoStatus;
+  preparedByUserId?: string;
+  preparedByName?: string;
 }
 
 export interface Log {

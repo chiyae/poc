@@ -235,6 +235,9 @@ const LpoPdfDocument: React.FC<LpoPdfDocumentProps> = ({ lpo, settings, formatCu
         {/* Signature Section */}
         <View style={styles.signatureSection}>
           <View style={styles.signatureBox}>
+            {lpo.preparedByName && (
+              <Text style={{ fontSize: 10, marginBottom: 5 }}>Prepared By: {lpo.preparedByName}</Text>
+            )}
             <View style={styles.signatureLine}>
               <Text style={styles.signatureLabel}>Authorized Signature</Text>
             </View>

@@ -152,14 +152,22 @@ export async function getSettings(id: string) {
 
 export async function upsertSettings(id: string, value: Record<string, any>) {
     await requireAuth(['admin']);
-    const [row] = await db.insert(schema.settings)
-        .values({ id, value })
-        .onConflictDoUpdate({
-            target: schema.settings.id,
-            set: { value },
-        })
-        .returning();
-    return serializeOne(row);
+    
+    return await db.transaction(async (tx) => {
+        const [existing] = await tx.select().from(schema.settings).where(eq(schema.settings.id, id));
+        const existingValue = (existing?.value || {}) as Record<string, any>;
+        const mergedValue = { ...existingValue, ...value };
+
+        const [row] = await tx.insert(schema.settings)
+            .values({ id, value: mergedValue })
+            .onConflictDoUpdate({
+                target: schema.settings.id,
+                set: { value: mergedValue },
+            })
+            .returning();
+            
+        return serializeOne(row);
+    });
 }
 export async function getItemHistory(itemId: string) {
     await requireAuth(['admin', 'pharmacy']);

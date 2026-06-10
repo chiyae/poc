@@ -85,8 +85,15 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
         </Table>
       </div>
 
-      {/* Grand Total */}
-      <div className="flex justify-end mt-4">
+      {/* Footer / Grand Total */}
+      <div className="flex justify-between items-end mt-8">
+        <div className="mb-2 text-sm text-muted-foreground">
+          {lpo.preparedByName && (
+            <div className="mt-4 pt-4 border-t border-muted-foreground/20 inline-block min-w-[200px]">
+              <p><span className="font-semibold">Prepared By:</span><br/> {lpo.preparedByName}</p>
+            </div>
+          )}
+        </div>
         <div className="w-full max-w-xs p-4 bg-muted rounded-lg">
           <div className="flex justify-between items-baseline">
             <p className="text-lg font-semibold text-muted-foreground">Grand Total</p>

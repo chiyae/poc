@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { formatItemName } from '@/lib/utils';
 import { ArrowLeft } from 'lucide-react';
-import { getStockTakeItems, createStockTakeItem, updateStockTakeItem, getStocksByLocation, getItems, updateStockTakeSession, updateStock, getStockTakeSessions } from '@/app/actions/index';
+import { getStockTakeItems, createStockTakeItem, updateStockTakeItem, getStocksByLocation, getItems, commitStockTakeSession, getStockTakeSessions } from '@/app/actions/index';
 import { useQuery } from '@/hooks/use-query';
 
 type EditableStockTakeItem = Omit<StockTakeItem, 'physicalQty'> & { physicalQty: number | '' };
@@ -59,7 +59,7 @@ function StockTakingContent() {
               itemId: stock.itemId,
               itemName: formatItemName(itemDetail),
               batchId: stock.batchId,
-              expiryDate: (stock.expiryDate as any)?.toISOString?.() || String(stock.expiryDate),
+              expiryDate: stock.expiryDate ? new Date(stock.expiryDate).toISOString() : 'N/A',
               systemQty: stock.currentStockQuantity,
               physicalQty: stock.currentStockQuantity,
               variance: 0,
@@ -114,24 +114,14 @@ function StockTakingContent() {
   const handleFinalizeStockTake = async () => {
     if (!stockTakeItems || !sessionData || !sessionId) return;
 
-    const stocksData = await getStocksByLocation(sessionData.locationId) as any;
-    const locationStocks = stocksData.stocks || [];
-
-    for (const item of stockTakeItems) {
-      if (item.variance !== 0) {
-        const stockDoc = locationStocks.find(
-          (s: any) => s.itemId === item.itemId && s.batchId === item.batchId
-        );
-        if (stockDoc) {
-          await updateStock(stockDoc.id, { currentStockQuantity: item.physicalQty });
-        }
-      }
+    try {
+      await commitStockTakeSession(sessionId);
+      toast({ title: "Stock Take Finalized", description: "Inventory quantities have been updated successfully." });
+      router.push('/dispensary/stock-take-history');
+    } catch (error) {
+      console.error("Stock take failed:", error);
+      toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update stock quantities.' });
     }
-
-    await updateStockTakeSession(sessionId, { status: 'Completed' });
-
-    toast({ title: "Stock Take Finalized", description: "Inventory quantities have been updated successfully." });
-    router.push('/dispensary/stock-take-history');
   };
 
   if (!sessionId) {

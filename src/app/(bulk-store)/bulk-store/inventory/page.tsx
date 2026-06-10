@@ -115,6 +115,18 @@ function BulkStoreInventoryContent() {
     setIsClient(true);
   }, []);
 
+  const [isPrintingAll, setIsPrintingAll] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isPrintingAll) {
+      const timer = setTimeout(() => {
+        window.print();
+        setIsPrintingAll(false);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isPrintingAll]);
+
   const isLoading = isItemsLoading || isStockLoading || areVendorsLoading;
 
   const inventoryData: BulkStoreInventoryItem[] = React.useMemo(() => {
@@ -355,7 +367,7 @@ function BulkStoreInventoryContent() {
 
   return (
     <PrintWrapper title="Bulk Store Inventory Report">
-      <div className="w-full space-y-6">
+      <div className={isPrintingAll ? "print:hidden w-full space-y-6" : "w-full space-y-6"}>
         <header className="flex items-start justify-between hide-on-print">
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}><ArrowLeft className="h-4 w-4" /><span className="sr-only">Back</span></Button>
@@ -378,9 +390,21 @@ function BulkStoreInventoryContent() {
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => window.print()}>
-              <Printer className="mr-2 h-4 w-4" /> Print List
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Printer className="mr-2 h-4 w-4" /> Print...
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="hide-on-print">
+                <DropdownMenuItem onClick={() => window.print()}>
+                  Print Current Page
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsPrintingAll(true)}>
+                  Print Entire List
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="outline" onClick={handleStartStockTake}><ClipboardList className="mr-2 h-4 w-4" />Start Stock Take</Button>
             <Button variant="outline" onClick={() => router.push('/tools/procurement-sessions')}>Procurement</Button>
             {isClient && (
@@ -486,6 +510,52 @@ function BulkStoreInventoryContent() {
           </Dialog>
         )}
       </div>
+      </div>
+      {isPrintingAll && filteredInventoryData && (
+        <div className="hidden print:block w-full">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-bold text-black border-b">Item Name</TableHead>
+                <TableHead className="font-bold text-black border-b">Category</TableHead>
+                <TableHead className="font-bold text-black border-b">Soonest Expiry</TableHead>
+                <TableHead className="font-bold text-black border-b text-right">Total Quantity</TableHead>
+                <TableHead className="font-bold text-black border-b">Expiry Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredInventoryData.map((item) => {
+                const itemStocks = allStock.filter(s => s.itemId === item.id);
+                const soonest = itemStocks
+                  .filter(s => s.expiryDate)
+                  .sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime())[0];
+                
+                let soonestExpiryText = 'N/A';
+                if (soonest) {
+                  soonestExpiryText = format(new Date(soonest.expiryDate), "dd/MM/yyyy");
+                }
+
+                const totalStockForItem = allStock
+                  .filter(s => s.itemId === item.id)
+                  .reduce((sum, s) => sum + s.currentStockQuantity, 0);
+
+                const expiryDate = item.stock?.expiryDate;
+                const expiryDateText = expiryDate ? format(new Date(expiryDate), 'dd/MM/yyyy') : 'N/A';
+
+                return (
+                  <TableRow key={item.id} className="border-b">
+                    <TableCell className="py-2 capitalize font-medium">{formatItemName(item)}</TableCell>
+                    <TableCell className="py-2 capitalize">{item.category}</TableCell>
+                    <TableCell className="py-2">{soonestExpiryText}</TableCell>
+                    <TableCell className="py-2 text-right">{totalStockForItem}</TableCell>
+                    <TableCell className="py-2">{expiryDateText}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </PrintWrapper>
   );
 }

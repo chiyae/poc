@@ -60,6 +60,7 @@ export const stocks = pgTable('stocks', {
   batchId: varchar('batch_id', { length: 255 }).notNull(),
   locationId: varchar('location_id', { length: 100 }).notNull(),
   currentStockQuantity: integer('current_stock_quantity').notNull().default(0),
+  reservedStock: integer('reserved_stock').notNull().default(0),
   expiryDate: timestamp('expiry_date', { withTimezone: true }),
 });
 
@@ -164,6 +165,8 @@ export const localPurchaseOrders = pgTable('local_purchase_orders', {
   items: jsonb('items').notNull().default([]),   // LocalPurchaseOrderItem[]
   grandTotal: real('grand_total').notNull().default(0),
   status: varchar('status', { length: 50 }).notNull().default('Draft'),
+  preparedByUserId: uuid('prepared_by_user_id'),
+  preparedByName: varchar('prepared_by_name', { length: 255 }),
 });
 
 // ─── AUDIT LOGS ──────────────────────────────────────────

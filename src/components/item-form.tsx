@@ -29,7 +29,7 @@ import { useEffect } from "react"
 const formSchema = z.object({
   genericName: z.string().min(2, "Generic name is required."),
   brandName: z.string().optional(),
-  formulation: z.enum(["Tablet", "Capsule", "Syrup", "Injection", "Cream", "Lotion", "Medical Supply", "Consumable"]),
+  formulation: z.enum(["Tablet", "Capsule", "Syrup", "Injection", "Cream", "Lotion", "Solution", "Medical Supply", "Consumable"]),
   strengthValue: z.coerce.number().optional(),
   strengthUnit: z.string().optional(),
   concentrationValue: z.coerce.number().optional(),

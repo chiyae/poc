@@ -123,7 +123,7 @@ export async function deleteStock(id: string) {
     await db.delete(schema.stocks).where(eq(schema.stocks.id, id));
 }
 
-export async function getInventoryItems(params: { limit: number; offset: number; locationId: string }) {
+export async function getInventoryItems(params: { limit?: number; offset?: number; locationId: string }) {
     await requireAuth(['admin', 'pharmacy', 'cashier']);
     
     const locationId = params.locationId;
@@ -133,8 +133,10 @@ export async function getInventoryItems(params: { limit: number; offset: number;
         .selectDistinct({ itemId: schema.stocks.itemId })
         .from(schema.stocks)
         .where(eq(schema.stocks.locationId, locationId))
-        .limit(params.limit)
-        .offset(params.offset);
+        .$dynamic();
+
+    if (params.limit !== undefined) distinctItemIdsQuery.limit(params.limit);
+    if (params.offset !== undefined) distinctItemIdsQuery.offset(params.offset);
     
     // 2. Count total unique items with stock in this location
     const totalCountQuery = db

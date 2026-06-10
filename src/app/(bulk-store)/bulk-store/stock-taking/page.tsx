@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { formatItemName } from '@/lib/utils';
 import { ArrowLeft } from 'lucide-react';
-import { getStockTakeSessions, getStockTakeItems, getStocks, getItems, createStockTakeItem, updateStockTakeItem, updateStock, updateStockTakeSession } from '@/app/actions/index';
+import { getStockTakeSessions, getStockTakeItems, getStocks, getItems, createStockTakeItem, updateStockTakeItem, commitStockTakeSession } from '@/app/actions/index';
 import { useQuery } from '@/hooks/use-query';
 
 type EditableStockTakeItem = Omit<StockTakeItem, 'physicalQty'> & {
@@ -53,14 +53,14 @@ function StockTakingContent() {
           const allItems = (itemsData as any).items;
 
           for (const stock of locationStock) {
-            const itemDetail = allItems.find(item => item.id === stock.itemId);
+            const itemDetail = allItems.find((item: any) => item.id === stock.itemId);
             if (itemDetail) {
               const newItem: Omit<StockTakeItem, 'id'> = {
                 sessionId: sessionData.id,
                 itemId: stock.itemId,
                 itemName: formatItemName(itemDetail as any),
                 batchId: stock.batchId,
-                expiryDate: stock.expiryDate ? new Date(stock.expiryDate).toISOString() : null as any,
+                expiryDate: stock.expiryDate ? new Date(stock.expiryDate).toISOString() : 'N/A',
                 systemQty: stock.currentStockQuantity,
                 physicalQty: stock.currentStockQuantity,
                 variance: 0,
@@ -119,22 +119,7 @@ function StockTakingContent() {
     if (!stockTakeItems || !sessionData) return;
 
     try {
-      const stocksData = await getStocks() as any;
-      const allStock = stocksData.stocks || [];
-      for (const item of stockTakeItems) {
-        if (item.variance !== 0) {
-          const stockDoc = allStock.find((s: any) =>
-            s.itemId === item.itemId &&
-            s.batchId === item.batchId &&
-            s.locationId === sessionData.locationId
-          );
-
-          if (stockDoc) {
-            await updateStock(stockDoc.id, { currentStockQuantity: item.physicalQty });
-          }
-        }
-      }
-      await updateStockTakeSession(sessionData.id, { status: 'Completed' });
+      await commitStockTakeSession(sessionData.id);
       toast({ title: "Stock Take Finalized", description: "Inventory updated successfully." });
       router.push('/bulk-store/stock-take-history');
     } catch (error) {
