@@ -510,7 +510,6 @@ function BulkStoreInventoryContent() {
           </Dialog>
         )}
       </div>
-      </div>
       {isPrintingAll && filteredInventoryData && (
         <div className="hidden print:block w-full">
           <Table>

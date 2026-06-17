@@ -54,7 +54,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
 import { ServiceForm } from '@/components/service-form';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Printer } from 'lucide-react';
 
 export default function ServiceManagementPage() {
   const { toast } = useToast();
@@ -86,6 +86,38 @@ export default function ServiceManagementPage() {
   React.useEffect(() => {
     setIsClient(true);
   }, []);
+
+  const [isPrintingAll, setIsPrintingAll] = React.useState(false);
+  const [printData, setPrintData] = React.useState<Service[] | null>(null);
+  const [isFetchingPrint, setIsFetchingPrint] = React.useState(false);
+
+  const handlePrintAll = async () => {
+    setIsFetchingPrint(true);
+    try {
+      const res = await getServices({
+        category: category === 'All' ? undefined : category,
+      }) as any;
+      if (res?.services) {
+        setPrintData(res.services);
+        setIsPrintingAll(true);
+      }
+    } catch (err) {
+      console.error('Failed to fetch all services for print:', err);
+    } finally {
+      setIsFetchingPrint(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isPrintingAll && printData) {
+      const timer = setTimeout(() => {
+        window.print();
+        setIsPrintingAll(false);
+        setPrintData(null);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isPrintingAll, printData]);
 
   const handleOpenDialog = (service: Service | null) => {
     setSelectedService(service);
@@ -244,7 +276,20 @@ export default function ServiceManagementPage() {
           </Select>
         </div>
         {isClient && (
-          <Button onClick={() => handleOpenDialog(null)}>Add New Service</Button>
+          <>
+            <Button onClick={() => handleOpenDialog(null)}>Add New Service</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isFetchingPrint}>
+                  <Printer className="mr-2 h-4 w-4" /> {isFetchingPrint ? 'Preparing...' : 'Print...'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => window.print()}>Print Current Page</DropdownMenuItem>
+                <DropdownMenuItem onClick={handlePrintAll}>Print Entire List</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
         )}
       </div>
 
@@ -314,6 +359,29 @@ export default function ServiceManagementPage() {
         onPageChange={setPage}
         isLoading={isLoading}
       />
+
+      {isPrintingAll && printData && (
+        <div className="hidden print:block w-full">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-bold text-black border-b">Service Name</TableHead>
+                <TableHead className="font-bold text-black border-b">Category</TableHead>
+                <TableHead className="font-bold text-black border-b text-right">Fee</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {printData.map((service) => (
+                <TableRow key={service.id} className="border-b">
+                  <TableCell className="py-2 font-medium">{service.name}</TableCell>
+                  <TableCell className="py-2">{service.category || 'General'}</TableCell>
+                  <TableCell className="py-2 text-right">{formatCurrency(service.fee)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {isClient && (
         <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>

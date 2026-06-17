@@ -27,6 +27,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
@@ -42,7 +43,7 @@ import type { Item, Stock, StockTakeSession } from '@/lib/types';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ClipboardList, FilterX } from 'lucide-react';
+import { ClipboardList, FilterX, Printer } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ItemDetails } from '@/components/item-details';
 import { formatItemName } from '@/lib/utils';
@@ -84,6 +85,36 @@ function DispensaryInventoryContent() {
 
   const [page, setPage] = React.useState(1);
   const pageSize = 20;
+
+  const [isPrintingAll, setIsPrintingAll] = React.useState(false);
+  const [printAllData, setPrintAllData] = React.useState<{ items: Item[]; stocks: Stock[] } | null>(null);
+  const [isFetchingPrint, setIsFetchingPrint] = React.useState(false);
+
+  const handlePrintAll = async () => {
+    setIsFetchingPrint(true);
+    try {
+      const res = await getInventoryItems({ locationId: 'dispensary' }) as any;
+      if (res) {
+        setPrintAllData({ items: res.items ?? [], stocks: res.stocks ?? [] });
+        setIsPrintingAll(true);
+      }
+    } catch (err) {
+      console.error('Failed to fetch all inventory for print:', err);
+    } finally {
+      setIsFetchingPrint(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isPrintingAll && printAllData) {
+      const timer = setTimeout(() => {
+        window.print();
+        setIsPrintingAll(false);
+        setPrintAllData(null);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isPrintingAll, printAllData]);
 
   // --- Data Fetching ---
   const { data, isLoading: isLoadingStock, refetch } = useQuery<{ items: Item[]; stocks: Stock[]; totalCount: number }>(
@@ -337,6 +368,7 @@ function DispensaryInventoryContent() {
   const isLoading = isLoadingItems || isLoadingStock;
 
   return (
+    <>
     <div className="space-y-4">
       <header className="flex items-center justify-between border-b pb-2">
         <div>
@@ -411,6 +443,22 @@ function DispensaryInventoryContent() {
               </Command>
             </DialogContent>
           </Dialog>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={isFetchingPrint}>
+                <Printer className="mr-1 h-3 w-3" /> {isFetchingPrint ? 'Preparing...' : 'Print...'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => window.print()}>
+                Print Current Page
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handlePrintAll}>
+                Print Entire List
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -530,6 +578,40 @@ function DispensaryInventoryContent() {
         </Dialog>
       )}
     </div>
+    {isPrintingAll && printAllData && (
+      <div className="hidden print:block w-full mt-4">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="font-bold text-black border-b">Item Name</TableHead>
+              <TableHead className="font-bold text-black border-b">Category</TableHead>
+              <TableHead className="font-bold text-black border-b">Batch</TableHead>
+              <TableHead className="font-bold text-black border-b">Expiry Date</TableHead>
+              <TableHead className="font-bold text-black border-b text-right">Qty</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {printAllData.items.map((item) => {
+              const itemStocks = printAllData.stocks.filter(s => s.itemId === item.id);
+              const primaryStock = itemStocks.sort((a, b) =>
+                new Date(a.expiryDate ?? '9999').getTime() - new Date(b.expiryDate ?? '9999').getTime()
+              )[0];
+              const totalQty = itemStocks.reduce((sum, s) => sum + s.currentStockQuantity, 0);
+              return (
+                <TableRow key={item.id} className="border-b">
+                  <TableCell className="py-2 capitalize font-medium">{formatItemName(item)}</TableCell>
+                  <TableCell className="py-2 capitalize">{item.category}</TableCell>
+                  <TableCell className="py-2 font-mono text-xs">{primaryStock?.batchId ?? 'N/A'}</TableCell>
+                  <TableCell className="py-2">{primaryStock?.expiryDate ? format(new Date(primaryStock.expiryDate), 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                  <TableCell className="py-2 text-right font-semibold">{totalQty}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    )}
+    </>
   );
 }
 

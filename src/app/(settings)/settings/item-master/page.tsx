@@ -56,7 +56,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/context/settings-provider';
 import { ItemForm } from '@/components/item-form';
 import { ItemImportDialog } from '@/components/item-import-dialog';
-import { ArrowLeft, Upload } from 'lucide-react';
+import { ArrowLeft, Upload, Printer } from 'lucide-react';
 import { formatItemName } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
@@ -90,6 +90,36 @@ export default function ItemMasterPage() {
   React.useEffect(() => {
     setIsClient(true);
   }, []);
+
+  const [isPrintingAll, setIsPrintingAll] = React.useState(false);
+  const [printData, setPrintData] = React.useState<Item[] | null>(null);
+  const [isFetchingPrint, setIsFetchingPrint] = React.useState(false);
+
+  const handlePrintAll = async () => {
+    setIsFetchingPrint(true);
+    try {
+      const res = await getItems() as any;
+      if (res?.items) {
+        setPrintData(res.items);
+        setIsPrintingAll(true);
+      }
+    } catch (err) {
+      console.error('Failed to fetch all items for print:', err);
+    } finally {
+      setIsFetchingPrint(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isPrintingAll && printData) {
+      const timer = setTimeout(() => {
+        window.print();
+        setIsPrintingAll(false);
+        setPrintData(null);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isPrintingAll, printData]);
 
   const handleCopyItemId = (itemId: string) => {
     navigator.clipboard.writeText(itemId);
@@ -327,6 +357,17 @@ export default function ItemMasterPage() {
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={isFetchingPrint}>
+                <Printer className="mr-2 h-4 w-4" /> {isFetchingPrint ? 'Preparing...' : 'Print...'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => window.print()}>Print Current Page</DropdownMenuItem>
+              <DropdownMenuItem onClick={handlePrintAll}>Print Entire List</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button variant="outline" className="ml-auto">
                 Columns <ChevronDownIcon className="ml-2 h-4 w-4" />
               </Button>
@@ -430,6 +471,35 @@ export default function ItemMasterPage() {
         onPageChange={setPage}
         isLoading={isLoading}
       />
+
+      {isPrintingAll && printData && (
+        <div className="hidden print:block w-full">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-bold text-black border-b">Item Code</TableHead>
+                <TableHead className="font-bold text-black border-b">Item Name</TableHead>
+                <TableHead className="font-bold text-black border-b">Formulation</TableHead>
+                <TableHead className="font-bold text-black border-b">Category</TableHead>
+                <TableHead className="font-bold text-black border-b text-right">Buying Price</TableHead>
+                <TableHead className="font-bold text-black border-b text-right">Selling Price</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {printData.map((item) => (
+                <TableRow key={item.id} className="border-b">
+                  <TableCell className="font-mono py-2 text-xs">{item.itemCode}</TableCell>
+                  <TableCell className="py-2 font-medium capitalize">{formatItemName(item)}</TableCell>
+                  <TableCell className="py-2 capitalize">{item.formulation}</TableCell>
+                  <TableCell className="py-2 capitalize">{item.category}</TableCell>
+                  <TableCell className="py-2 text-right">{formatCurrency(item.buyingPrice)}</TableCell>
+                  <TableCell className="py-2 text-right">{formatCurrency(item.sellingPrice)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {isClient && (
         <>

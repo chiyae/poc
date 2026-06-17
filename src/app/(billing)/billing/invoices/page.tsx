@@ -16,7 +16,7 @@ import {
     useReactTable 
 } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -74,6 +74,45 @@ function InvoicesAndBillsContent() {
   const [selectedBill, setSelectedBill] = React.useState<Bill | null>(null);
   const [isViewBillOpen, setIsViewBillOpen] = React.useState(false);
   const [receiptBill, setReceiptBill] = React.useState<{ bill: Bill, mode: 'invoice' | 'receipt' } | null>(null);
+
+  const [printData, setPrintData] = React.useState<Bill[] | null>(null);
+  const [isPrintingAll, setIsPrintingAll] = React.useState(false);
+  const [isFetchingPrint, setIsFetchingPrint] = React.useState(false);
+
+  const handlePrintAll = async () => {
+    setIsFetchingPrint(true);
+    try {
+      const res = await getBillings({
+        patientName: patientName || undefined,
+        startDate: dateRange?.from,
+        endDate: dateRange?.to,
+      }) as any;
+      if (res?.billings) {
+        const filtered = statusFilter === 'invoices'
+          ? res.billings.filter((b: Bill) => b.paymentDetails.invoiceNumber != null)
+          : statusFilter === 'receipts'
+            ? res.billings.filter((b: Bill) => b.receiptNumber != null)
+            : res.billings;
+        setPrintData(filtered);
+        setIsPrintingAll(true);
+      }
+    } catch (err) {
+      console.error('Print fetch failed:', err);
+    } finally {
+      setIsFetchingPrint(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isPrintingAll && printData) {
+      const timer = setTimeout(() => {
+        window.print();
+        setIsPrintingAll(false);
+        setPrintData(null);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isPrintingAll, printData]);
 
   const filteredData = React.useMemo(() => {
     if (!bills) return [];
@@ -201,7 +240,7 @@ function InvoicesAndBillsContent() {
         {receiptBill ? (
           <Receipt bill={receiptBill.bill} mode={receiptBill.mode} />
         ) : (
-          <div className="w-full space-y-6">
+          <div className={isPrintingAll ? 'print:hidden w-full space-y-6' : 'w-full space-y-6'}>
             <header className="flex items-start justify-between hide-on-print">
               <div className="flex items-center gap-4">
                 <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => router.back()}><ArrowLeft className="h-4 w-4" /><span className="sr-only">Back</span></Button>
@@ -266,9 +305,21 @@ function InvoicesAndBillsContent() {
                 setDateRange(range);
                 setPage(0);
               }} />
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer className="mr-2 h-4 w-4" /> Print List
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" disabled={areBillsLoading || isFetchingPrint}>
+                    <Printer className="mr-2 h-4 w-4" /> {isFetchingPrint ? 'Preparing...' : 'Print...'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => window.print()}>
+                    Print Current Page
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handlePrintAll}>
+                    Print Entire List
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <div className="rounded-md border">
               <Table>
@@ -288,6 +339,35 @@ function InvoicesAndBillsContent() {
               onPageChange={(p) => setPage(p - 1)}
               isLoading={areBillsLoading}
             />
+          </div>
+        )}
+        {isPrintingAll && printData && (
+          <div className="hidden print:block w-full">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="font-bold text-black border-b">No.</TableHead>
+                  <TableHead className="font-bold text-black border-b">Date</TableHead>
+                  <TableHead className="font-bold text-black border-b">Patient Name</TableHead>
+                  <TableHead className="font-bold text-black border-b">Status</TableHead>
+                  <TableHead className="font-bold text-black border-b text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {printData.map((b) => {
+                  const docNum = b.receiptNumber ?? b.paymentDetails?.invoiceNumber ?? '—';
+                  return (
+                    <TableRow key={b.id} className="border-b">
+                      <TableCell className="font-mono text-xs py-2">{docNum}</TableCell>
+                      <TableCell className="py-2">{format(new Date(b.date), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell className="py-2 font-medium">{b.patientName}</TableCell>
+                      <TableCell className="py-2">{b.paymentDetails?.status}</TableCell>
+                      <TableCell className="py-2 text-right">{formatCurrency(b.grandTotal)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         )}
       </PrintWrapper>
