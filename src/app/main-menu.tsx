@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building, Pill, DollarSign, Wrench, Wallet } from 'lucide-react';
+import { Building, Pill, DollarSign, Wrench, Wallet, CalendarDays } from 'lucide-react';
 import { useAppUser } from '@/hooks/use-app-user';
 
 export default function MainMenu() {
@@ -44,6 +44,13 @@ export default function MainMenu() {
             title: "Finance",
             description: "Manage clinic expenses, track payroll, and view shift-based income reports.",
             roles: ["admin"]
+        },
+        {
+            href: "/appointment-calculator",
+            icon: CalendarDays,
+            title: "Appointment Calculator",
+            description: "Calculate next appointment dates for ART, Family Planning, etc.",
+            roles: ["admin", "pharmacy", "cashier"]
         }
     ]
 
