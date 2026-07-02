@@ -185,6 +185,8 @@ const LpoPdfDocument: React.FC<LpoPdfDocumentProps> = ({ lpo, settings, formatCu
             <Text style={styles.clinicName}>{settings?.clinicName || 'Your Clinic Name'}</Text>
             <Text style={styles.clinicDetails}>{settings?.clinicAddress}</Text>
             <Text style={styles.clinicDetails}>Tel: {settings?.clinicPhone}</Text>
+            {settings?.mraTinNumber && <Text style={styles.clinicDetails}>TIN: {settings.mraTinNumber}</Text>}
+            {settings?.pharmacyPoisonsBoardRegNumber && <Text style={styles.clinicDetails}>Pharmacy Poisons Board Reg: {settings.pharmacyPoisonsBoardRegNumber}</Text>}
           </View>
           <View style={styles.headerRight}>
             <Text style={styles.lpoTitle}>LPO</Text>

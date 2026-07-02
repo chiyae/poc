@@ -22,6 +22,9 @@ const defaultSettings: ClinicSettings = {
     sessionTimeout: 30, // 30 minutes default
     nextReceiptNumber: 1000,
     nextInvoiceNumber: 1000,
+    medicalCouncilRegNumber: '',
+    mraTinNumber: '',
+    pharmacyPoisonsBoardRegNumber: '',
 };
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);

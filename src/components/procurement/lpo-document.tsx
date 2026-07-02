@@ -32,6 +32,12 @@ export function LpoDocument({ lpo }: LpoDocumentProps) {
           <p className="text-sm text-muted-foreground">
             Tel: {settings?.clinicPhone} | Email: info@mpingu.med
           </p>
+          {settings?.mraTinNumber && (
+            <p className="text-sm text-muted-foreground">TIN: {settings.mraTinNumber}</p>
+          )}
+          {settings?.pharmacyPoisonsBoardRegNumber && (
+            <p className="text-sm text-muted-foreground">Pharmacy Poisons Board Reg: {settings.pharmacyPoisonsBoardRegNumber}</p>
+          )}
         </div>
         <div className="text-right">
           <h2 className="text-5xl font-bold uppercase tracking-wider text-muted-foreground">LPO</h2>

@@ -16,6 +16,9 @@ export interface ClinicSettings {
   sessionTimeout: number; // In minutes
   nextReceiptNumber: number;
   nextInvoiceNumber: number;
+  medicalCouncilRegNumber?: string;
+  mraTinNumber?: string;
+  pharmacyPoisonsBoardRegNumber?: string;
 }
 
 export type Location = 'Bulk Store' | 'Dispensary' | 'Billing';

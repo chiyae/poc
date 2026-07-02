@@ -30,6 +30,9 @@ const defaultSettings: ClinicSettings = {
   sessionTimeout: 30,
   nextReceiptNumber: 1,
   nextInvoiceNumber: 1,
+  medicalCouncilRegNumber: '',
+  mraTinNumber: '',
+  pharmacyPoisonsBoardRegNumber: '',
 };
 
 export default function GeneralSettingsPage() {
@@ -58,6 +61,9 @@ export default function GeneralSettingsPage() {
   const [sessionTimeout, setSessionTimeout] = React.useState(30);
   const [nextReceiptNumber, setNextReceiptNumber] = React.useState(1);
   const [nextInvoiceNumber, setNextInvoiceNumber] = React.useState(1);
+  const [medicalCouncilRegNumber, setMedicalCouncilRegNumber] = React.useState('');
+  const [mraTinNumber, setMraTinNumber] = React.useState('');
+  const [pharmacyPoisonsBoardRegNumber, setPharmacyPoisonsBoardRegNumber] = React.useState('');
 
   // Effect to seed the database with initial data if none exists
   React.useEffect(() => {
@@ -87,6 +93,9 @@ export default function GeneralSettingsPage() {
     setSessionTimeout(dataToDisplay.sessionTimeout || 30);
     setNextReceiptNumber(dataToDisplay.nextReceiptNumber || 1);
     setNextInvoiceNumber(dataToDisplay.nextInvoiceNumber || 1);
+    setMedicalCouncilRegNumber(dataToDisplay.medicalCouncilRegNumber || '');
+    setMraTinNumber(dataToDisplay.mraTinNumber || '');
+    setPharmacyPoisonsBoardRegNumber(dataToDisplay.pharmacyPoisonsBoardRegNumber || '');
   }, [settingsData]);
 
 
@@ -103,6 +112,9 @@ export default function GeneralSettingsPage() {
         sessionTimeout,
         nextReceiptNumber,
         nextInvoiceNumber,
+        medicalCouncilRegNumber,
+        mraTinNumber,
+        pharmacyPoisonsBoardRegNumber,
       });
 
       await refreshSettings();
@@ -234,6 +246,30 @@ export default function GeneralSettingsPage() {
                 id="clinicPhone"
                 value={clinicPhone}
                 onChange={(e) => setClinicPhone(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="medicalCouncilRegNumber">Medical Council Reg Number</Label>
+              <Input
+                id="medicalCouncilRegNumber"
+                value={medicalCouncilRegNumber}
+                onChange={(e) => setMedicalCouncilRegNumber(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mraTinNumber">MRA TIN Number</Label>
+              <Input
+                id="mraTinNumber"
+                value={mraTinNumber}
+                onChange={(e) => setMraTinNumber(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pharmacyPoisonsBoardRegNumber">Pharmacy Poisons Board Reg Number</Label>
+              <Input
+                id="pharmacyPoisonsBoardRegNumber"
+                value={pharmacyPoisonsBoardRegNumber}
+                onChange={(e) => setPharmacyPoisonsBoardRegNumber(e.target.value)}
               />
             </div>
             <div className="space-y-2">
