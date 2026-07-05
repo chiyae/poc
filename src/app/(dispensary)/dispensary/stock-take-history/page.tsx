@@ -6,6 +6,7 @@ import StockTakeHistoryTable from '@/components/stock-take-history-table';
 export default function StockTakeHistoryPage() {
   return (
     <StockTakeHistoryTable
+      locationId="dispensary"
       title="Stock-Take History"
       description="A chronological list of all stock-take sessions."
       cardTitle="All Sessions"
