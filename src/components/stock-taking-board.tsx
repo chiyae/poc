@@ -16,8 +16,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { formatItemName } from '@/lib/utils';
-import { ArrowLeft, Plus, Search } from 'lucide-react';
-import { getStockTakeItems, createStockTakeItem, updateStockTakeItem, getStocksByLocation, getItems, commitStockTakeSession, getStockTakeSessionsByLocation } from '@/app/actions/index';
+import { ArrowLeft, Plus, Search, ClipboardList } from 'lucide-react';
+import { getStockTakeItems, createStockTakeItem, updateStockTakeItem, getStocksByLocation, getItems, commitStockTakeSession, getStockTakeSessionsByLocation, createStockTakeSession } from '@/app/actions/index';
 import { useQuery } from '@/hooks/use-query';
 
 type EditableStockTakeItem = Omit<StockTakeItem, 'physicalQty'> & { physicalQty: number | '' };
@@ -185,11 +185,58 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
     }
   };
 
+  const ongoingSession = stockTakeSessions.find(s => s.status === 'Ongoing');
+  const [isStartingSession, setIsStartingSession] = React.useState(false);
+
+  const handleStartNewSession = async () => {
+    setIsStartingSession(true);
+    try {
+      const newSession: any = {
+        locationId,
+        status: 'Ongoing'
+      };
+      const created = await createStockTakeSession(newSession);
+      router.push(`?session=${created.id}`);
+    } catch (error) {
+      console.error("Failed to start stock take session:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error Starting Session',
+        description: 'Could not create a new stock-take session.',
+      });
+    } finally {
+      setIsStartingSession(false);
+    }
+  };
+
   if (!sessionId) {
     return (
       <Card>
-        <CardHeader><CardTitle>Error</CardTitle></CardHeader>
-        <CardContent><p>No stock-take session ID provided. Please start a session from the inventory page.</p></CardContent>
+        <CardHeader>
+          <CardTitle>Stock Taking</CardTitle>
+          <CardDescription>Manage your inventory stock counts for {locationId === 'dispensary' ? 'Dispensary' : 'Bulk Store'}.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
+          <div className="rounded-full bg-primary/10 p-4">
+            <ClipboardList className="h-8 w-8 text-primary" />
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-semibold">No active session selected</h3>
+            <p className="text-muted-foreground text-sm max-w-md mt-1">
+              You can start a new stock-take session or resume an ongoing one to manage your inventory quantities.
+            </p>
+          </div>
+          <div className="flex gap-4 mt-4">
+            {ongoingSession ? (
+              <Button onClick={() => router.push(`?session=${ongoingSession.id}`)}>
+                Resume Ongoing Session
+              </Button>
+            ) : null}
+            <Button variant={ongoingSession ? "outline" : "default"} onClick={handleStartNewSession} disabled={isStartingSession}>
+              {isStartingSession ? "Starting..." : "Start New Stock Take"}
+            </Button>
+          </div>
+        </CardContent>
       </Card>
     );
   }
