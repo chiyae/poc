@@ -114,10 +114,10 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
   }, [sessionData, stockTakeItems, areItemsLoading, sessionId, toast, refetchItems]);
 
   React.useEffect(() => {
-    if (stockTakeItems) {
-      setEditableItems(stockTakeItems.map(item => ({ ...item, physicalQty: item.physicalQty ?? '' })));
+    if (itemsData?.data) {
+      setEditableItems(itemsData.data.map(item => ({ ...item, physicalQty: item.physicalQty ?? '' })));
     }
-  }, [stockTakeItems]);
+  }, [itemsData?.data]);
 
   const handlePhysicalQtyChange = (itemId: string, value: string) => {
     setEditableItems(prevList =>
