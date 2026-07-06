@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { formatItemName } from '@/lib/utils';
 import { ArrowLeft, Plus, Search, ClipboardList } from 'lucide-react';
-import { getStockTakeItems, createStockTakeItem, createStockTakeItemsBulk, updateStockTakeItem, getStocksByLocation, getItems, commitStockTakeSession, getStockTakeSessionsByLocation, createStockTakeSession } from '@/app/actions/index';
+import { getStockTakeItems, createStockTakeItem, createStockTakeItemsBulk, updateStockTakeItem, getStocksByLocation, getItems, commitStockTakeSession, approveStockTakeSession, getStockTakeSessionsByLocation, createStockTakeSession } from '@/app/actions/index';
 import { useQuery } from '@/hooks/use-query';
 
 type EditableStockTakeItem = Omit<StockTakeItem, 'physicalQty'> & { physicalQty: number | '' };
@@ -48,6 +48,12 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
   // Search and Filter state
   const [searchQuery, setSearchQuery] = React.useState('');
   const [variancesOnly, setVariancesOnly] = React.useState(false);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const itemsPerPage = 50;
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, variancesOnly]);
 
   // Add Unlisted Item State
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
@@ -81,7 +87,7 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
               itemId: stock.itemId,
               itemName: formatItemName(itemDetail),
               batchId: stock.batchId,
-              expiryDate: stock.expiryDate ? new Date(stock.expiryDate).toISOString() : 'N/A',
+              expiryDate: stock.expiryDate ? new Date(stock.expiryDate) : null,
               systemQty: stock.currentStockQuantity,
               physicalQty: stock.currentStockQuantity,
               variance: 0,
@@ -145,7 +151,7 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
         itemId: unlistedItemId,
         itemName: formatItemName(itemDetail),
         batchId: unlistedBatchId || 'UNKNOWN',
-        expiryDate: unlistedExpiry ? new Date(unlistedExpiry).toISOString() : 'N/A',
+        expiryDate: unlistedExpiry ? new Date(unlistedExpiry) : null,
         systemQty: 0,
         physicalQty: unlistedPhysicalQty as number,
         variance: unlistedPhysicalQty as number,
@@ -178,16 +184,29 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
 
   const isLoading = !sessionData || areItemsLoading;
 
-  const handleFinalizeStockTake = async () => {
+  const handleSubmitForReview = async () => {
     if (!stockTakeItems || !sessionData || !sessionId) return;
 
     try {
       await commitStockTakeSession(sessionId);
-      toast({ title: "Stock Take Finalized", description: "Inventory quantities have been updated successfully." });
+      toast({ title: "Submitted for Review", description: "Stock take has been submitted to management for review." });
       router.push(returnPath);
     } catch (error) {
-      console.error("Stock take failed:", error);
-      toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update stock quantities.' });
+      console.error("Submission failed:", error);
+      toast({ variant: 'destructive', title: 'Submission Failed', description: 'Could not submit stock take for review.' });
+    }
+  };
+
+  const handleApproveStockTake = async () => {
+    if (!stockTakeItems || !sessionData || !sessionId) return;
+
+    try {
+      await approveStockTakeSession(sessionId);
+      toast({ title: "Session Approved", description: "Ledger updated successfully." });
+      router.push(returnPath);
+    } catch (error) {
+      console.error("Approval failed:", error);
+      toast({ variant: 'destructive', title: 'Approval Failed', description: 'Could not approve stock take. Check permissions.' });
     }
   };
 
@@ -262,6 +281,9 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
     
     return true;
   });
+
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <Card>
@@ -367,7 +389,7 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
               {isLoading && Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}><TableCell colSpan={4}><Skeleton className='h-8 w-full' /></TableCell></TableRow>
               ))}
-              {!isLoading && filteredItems.map((item) => {
+              {!isLoading && paginatedItems.map((item) => {
                 const physicalQty = typeof item.physicalQty === 'string' ? null : Number(item.physicalQty);
                 const variance = physicalQty === null ? null : physicalQty - item.systemQty;
                 let varianceColor = '';
@@ -375,6 +397,7 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
                   if (variance < 0) varianceColor = 'text-destructive';
                   if (variance > 0) varianceColor = 'text-green-600';
                 }
+                const isReadOnly = sessionData?.status === 'Completed' || sessionData?.status === 'Under Review';
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">
@@ -382,7 +405,7 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
                     </TableCell>
                     <TableCell className="text-center">{item.systemQty}</TableCell>
                     <TableCell className="text-center">
-                      <Input type="number" value={item.physicalQty} onChange={(e) => handlePhysicalQtyChange(item.id, e.target.value)} onBlur={(e) => handleBlur(item.id, e.target.value === '' ? '' : parseInt(e.target.value))} className="w-24 mx-auto text-center" min="0" disabled={sessionData?.status === 'Completed'} />
+                      <Input type="number" value={item.physicalQty} onChange={(e) => handlePhysicalQtyChange(item.id, e.target.value)} onBlur={(e) => handleBlur(item.id, e.target.value === '' ? '' : parseInt(e.target.value))} className="w-24 mx-auto text-center" min="0" disabled={isReadOnly} />
                     </TableCell>
                     <TableCell className={`text-center font-bold ${varianceColor}`}>
                       {variance !== null ? (variance > 0 ? `+${variance}` : variance) : '-'}
@@ -399,24 +422,57 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
               )}
             </TableBody>
           </Table>
+          
+          {!isLoading && totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <span className="text-sm text-muted-foreground">
+                Showing page {currentPage} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Previous</Button>
+                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>Next</Button>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
       {sessionData?.status === 'Ongoing' && (
         <CardFooter className="flex justify-end">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button disabled={hasPendingChanges || isLoading}>Finalize & Update Stock</Button>
+              <Button disabled={hasPendingChanges || isLoading}>Submit for Review</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>Submit Stock Take?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will update the system's stock quantities to match your physical counts. This action cannot be undone.
+                  This will submit your physical counts for management review. You will no longer be able to make changes.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleFinalizeStockTake}>Continue</AlertDialogAction>
+                <AlertDialogAction onClick={handleSubmitForReview}>Submit</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardFooter>
+      )}
+      {sessionData?.status === 'Under Review' && (
+        <CardFooter className="flex justify-end">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button disabled={isLoading}>Approve & Update Ledger</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Approve Stock Take?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will apply the counted variances to the live inventory. Make sure you have thoroughly reviewed the discrepancies.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleApproveStockTake}>Approve & Update</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

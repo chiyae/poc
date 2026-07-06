@@ -163,7 +163,7 @@ export interface StockTakeItem {
   itemId: string;
   itemName: string;
   batchId: string;
-  expiryDate: string;
+  expiryDate: string | Date | null;
   systemQty: number;
   physicalQty: number;
   variance: number;
@@ -173,7 +173,7 @@ export interface StockTakeSession {
   id: string; // Session ID
   date: string; // ISO date-time string
   locationId: string;
-  status: 'Ongoing' | 'Completed';
+  status: 'Ongoing' | 'Under Review' | 'Completed';
   // items will be a subcollection
 }
 

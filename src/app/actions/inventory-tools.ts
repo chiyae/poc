@@ -457,11 +457,32 @@ export async function commitStockTakeSession(sessionId: string) {
     return await db.transaction(async (tx) => {
         const [session] = await tx.select().from(schema.stockTakeSessions).where(eq(schema.stockTakeSessions.id, sessionId));
         if (!session) throw new Error("Stock Take Session not found.");
-        if (session.status === 'Completed') throw new Error("Session is already completed.");
+        if (session.status !== 'Ongoing') throw new Error("Session is not in Ongoing status.");
+
+        const [updatedSession] = await tx.update(schema.stockTakeSessions)
+            .set({ status: 'Under Review' })
+            .where(eq(schema.stockTakeSessions.id, sessionId))
+            .returning();
+            
+        await logAction(user, 'Submit Stock Take for Review', { sessionId, locationId: session.locationId });
+        
+        return serializeOne(updatedSession);
+    });
+}
+
+export async function approveStockTakeSession(sessionId: string) {
+    const user = await requireAuth(['admin']); // Only admins can approve
+    
+    return await db.transaction(async (tx) => {
+        const [session] = await tx.select().from(schema.stockTakeSessions).where(eq(schema.stockTakeSessions.id, sessionId));
+        if (!session) throw new Error("Stock Take Session not found.");
+        if (session.status !== 'Under Review') throw new Error("Session is not pending review.");
 
         const items = await tx.select().from(schema.stockTakeItems).where(eq(schema.stockTakeItems.sessionId, sessionId));
 
         for (const item of items) {
+            if (item.variance === 0) continue; // Skip items with no variance to save DB calls
+
             // Find the stock record
             const [stock] = await tx.select().from(schema.stocks).where(
                 and(
@@ -472,25 +493,18 @@ export async function commitStockTakeSession(sessionId: string) {
             );
 
             if (stock) {
-                // Update the stock to match the physical quantity
+                // Apply the variance instead of overwriting! This fixes the moving target risk.
                 await tx.update(schema.stocks)
-                    .set({ currentStockQuantity: item.physicalQty })
+                    .set({ currentStockQuantity: sql`GREATEST(0, ${schema.stocks.currentStockQuantity} + ${item.variance})` })
                     .where(eq(schema.stocks.id, stock.id));
             } else if (item.physicalQty > 0) {
-                // If it didn't exist but we counted some, create it
-                let expiryDate = null;
-                if (item.expiryDate && item.expiryDate !== 'N/A') {
-                    const parsedDate = new Date(item.expiryDate);
-                    if (!isNaN(parsedDate.getTime())) {
-                        expiryDate = parsedDate;
-                    }
-                }
+                // If it didn't exist but we counted some, create it with the variance as starting quantity
                 await tx.insert(schema.stocks).values({
                     itemId: item.itemId,
                     batchId: item.batchId,
                     locationId: session.locationId,
-                    expiryDate: expiryDate,
-                    currentStockQuantity: item.physicalQty,
+                    expiryDate: item.expiryDate, // is now a timestamp
+                    currentStockQuantity: item.variance,
                 });
             }
         }
@@ -500,7 +514,7 @@ export async function commitStockTakeSession(sessionId: string) {
             .where(eq(schema.stockTakeSessions.id, sessionId))
             .returning();
             
-        await logAction(user, 'Commit Stock Take', { sessionId, locationId: session.locationId });
+        await logAction(user, 'Approve & Commit Stock Take', { sessionId, locationId: session.locationId });
         
         return serializeOne(completedSession);
     });

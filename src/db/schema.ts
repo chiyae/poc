@@ -139,7 +139,7 @@ export const stockTakeItems = pgTable('stock_take_items', {
   itemId: uuid('item_id').notNull(),
   itemName: varchar('item_name', { length: 255 }).notNull(),
   batchId: varchar('batch_id', { length: 255 }).notNull(),
-  expiryDate: varchar('expiry_date', { length: 255 }).notNull(),
+  expiryDate: timestamp('expiry_date', { withTimezone: true }),
   systemQty: integer('system_qty').notNull().default(0),
   physicalQty: integer('physical_qty').notNull().default(0),
   variance: integer('variance').notNull().default(0),
