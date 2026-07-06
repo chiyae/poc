@@ -328,6 +328,20 @@ export async function createStockTakeItem(data: typeof schema.stockTakeItems.$in
     return serializeOne(row);
 }
 
+export async function createStockTakeItemsBulk(data: (typeof schema.stockTakeItems.$inferInsert)[]) {
+    await requireAuth(['admin', 'pharmacy']);
+    if (!data || data.length === 0) return [];
+    
+    const CHUNK_SIZE = 100;
+    const allRows = [];
+    for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+        const chunk = data.slice(i, i + CHUNK_SIZE);
+        const rows = await db.insert(schema.stockTakeItems).values(chunk).returning();
+        allRows.push(...rows);
+    }
+    return serialize(allRows);
+}
+
 export async function updateStockTakeItem(id: string, data: Partial<typeof schema.stockTakeItems.$inferInsert>) {
     await requireAuth(['admin', 'pharmacy']);
     const [row] = await db.update(schema.stockTakeItems).set(data).where(eq(schema.stockTakeItems.id, id)).returning();

@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { formatItemName } from '@/lib/utils';
 import { ArrowLeft, Plus, Search, ClipboardList } from 'lucide-react';
-import { getStockTakeItems, createStockTakeItem, updateStockTakeItem, getStocksByLocation, getItems, commitStockTakeSession, getStockTakeSessionsByLocation, createStockTakeSession } from '@/app/actions/index';
+import { getStockTakeItems, createStockTakeItem, createStockTakeItemsBulk, updateStockTakeItem, getStocksByLocation, getItems, commitStockTakeSession, getStockTakeSessionsByLocation, createStockTakeSession } from '@/app/actions/index';
 import { useQuery } from '@/hooks/use-query';
 
 type EditableStockTakeItem = Omit<StockTakeItem, 'physicalQty'> & { physicalQty: number | '' };
@@ -71,6 +71,7 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
         const locationStocks = (stocksData as any).stocks || [];
         const allItems = (itemsDataResponse as any).items || [];
 
+        const newItemsToCreate = [];
         for (const stock of locationStocks) {
           if (cancelled) return;
           const itemDetail = allItems.find((item: any) => item.id === stock.itemId);
@@ -85,9 +86,14 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
               physicalQty: stock.currentStockQuantity,
               variance: 0,
             };
-            await createStockTakeItem(newItem as any);
+            newItemsToCreate.push(newItem);
           }
         }
+        
+        if (!cancelled && newItemsToCreate.length > 0) {
+          await createStockTakeItemsBulk(newItemsToCreate as any);
+        }
+
         if (!cancelled) {
           toast({ title: 'Session Ready', description: 'Stock list has been loaded. You can start counting.' });
           refetchItems();
