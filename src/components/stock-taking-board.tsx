@@ -33,7 +33,7 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session');
 
-  const { data: sessionsData } = useQuery<{ sessions: StockTakeSession[]; totalCount: number }>(() => getStockTakeSessionsByLocation(locationId) as any, [locationId]);
+  const { data: sessionsData, isLoading: areSessionsLoading, refetch: refetchSessions } = useQuery<{ sessions: StockTakeSession[]; totalCount: number }>(() => getStockTakeSessionsByLocation(locationId) as any, [locationId]);
   const stockTakeSessions = sessionsData?.sessions || [];
   const sessionData = React.useMemo(() => stockTakeSessions.find(s => s.id === sessionId) || null, [stockTakeSessions, sessionId]);
 
@@ -42,6 +42,7 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
     [sessionId]
   );
   const stockTakeItems = itemsData?.data || [];
+  const stockTakeItemsCount = stockTakeItems.length;
 
   const [editableItems, setEditableItems] = React.useState<EditableStockTakeItem[]>([]);
   
@@ -66,20 +67,32 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
   const { data: allGlobalItemsData } = useQuery<{ items: Item[]; totalCount: number }>(() => getItems() as any, []);
   const allGlobalItems = allGlobalItemsData?.items || [];
 
+  // Guard against re-running bulk creation multiple times while items are being saved
+  const isInitializingRef = React.useRef(false);
+
   React.useEffect(() => {
     let cancelled = false;
+
     const createStockTakeList = async () => {
-      if (sessionData && stockTakeItems?.length === 0 && sessionData.status === 'Ongoing' && sessionId) {
+      // Only run when: session is loaded, it's Ongoing, items have been confirmed empty (not still loading), and not already running
+      if (!sessionData || sessionData.status !== 'Ongoing' || !sessionId) return;
+      if (areItemsLoading) return;
+      if (stockTakeItemsCount > 0) return;
+      if (isInitializingRef.current) return;
+
+      isInitializingRef.current = true;
+      try {
         const [stocksData, itemsDataResponse] = await Promise.all([
           getStocksByLocation(sessionData.locationId) as any,
           getItems() as any,
         ]);
+        if (cancelled) return;
+
         const locationStocks = (stocksData as any).stocks || [];
         const allItems = (itemsDataResponse as any).items || [];
 
         const newItemsToCreate = [];
         for (const stock of locationStocks) {
-          if (cancelled) return;
           const itemDetail = allItems.find((item: any) => item.id === stock.itemId);
           if (itemDetail) {
             const newItem: Omit<StockTakeItem, 'id'> = {
@@ -95,7 +108,7 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
             newItemsToCreate.push(newItem);
           }
         }
-        
+
         if (!cancelled && newItemsToCreate.length > 0) {
           await createStockTakeItemsBulk(newItemsToCreate as any);
         }
@@ -104,14 +117,15 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
           toast({ title: 'Session Ready', description: 'Stock list has been loaded. You can start counting.' });
           refetchItems();
         }
+      } finally {
+        if (!cancelled) isInitializingRef.current = false;
       }
     };
 
-    if (sessionData && !areItemsLoading && stockTakeItems?.length === 0) {
-      createStockTakeList();
-    }
+    createStockTakeList();
     return () => { cancelled = true; };
-  }, [sessionData, stockTakeItems, areItemsLoading, sessionId, toast, refetchItems]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionData?.id, sessionData?.status, areItemsLoading, stockTakeItemsCount, sessionId, toast, refetchItems]);
 
   React.useEffect(() => {
     if (itemsData?.data) {
@@ -182,7 +196,8 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
     return ((item.physicalQty as any) !== '' && item.physicalQty !== original.physicalQty);
   });
 
-  const isLoading = !sessionData || areItemsLoading;
+  // Show loading when: items query is running, OR when we have a sessionId but sessions are still loading (so sessionData isn't resolved yet)
+  const isLoading = areItemsLoading || (!!sessionId && areSessionsLoading && !sessionData);
 
   const handleSubmitForReview = async () => {
     if (!stockTakeItems || !sessionData || !sessionId) return;
@@ -221,6 +236,8 @@ export function StockTakingBoardContent({ locationId, returnPath }: StockTakingB
         status: 'Ongoing'
       };
       const created = await createStockTakeSession(newSession);
+      // Refetch sessions first so sessionData is populated when we navigate
+      await refetchSessions();
       router.push(`?session=${created.id}`);
     } catch (error) {
       console.error("Failed to start stock take session:", error);

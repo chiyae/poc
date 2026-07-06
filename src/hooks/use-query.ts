@@ -13,7 +13,7 @@ import { useState, useEffect, useCallback } from 'react';
 export function useQuery<T>(
     fetchFn: (() => Promise<T>) | null,
     deps: any[] = [],
-): { data: T | null; isLoading: boolean; error: Error | null; refetch: () => void } {
+): { data: T | null; isLoading: boolean; error: Error | null; refetch: () => Promise<void> } {
     const [data, setData] = useState<T | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<Error | null>(null);
@@ -40,12 +40,12 @@ export function useQuery<T>(
 
     const stringifiedDeps = JSON.stringify(deps);
 
-    const refetch = useCallback(() => {
+    const refetch = useCallback((): Promise<void> => {
         const currentFetch = fetchFnRef.current;
         if (!currentFetch) {
             setData(null);
             setIsLoading(false);
-            return;
+            return Promise.resolve();
         }
 
         // Only show loading state if we don't have data yet
@@ -54,7 +54,7 @@ export function useQuery<T>(
         }
         setError(null);
 
-        currentFetch()
+        return currentFetch()
             .then((result) => {
                 if (!mountedRef.current) return;
                 setData(result);
