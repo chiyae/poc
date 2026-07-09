@@ -310,3 +310,14 @@ export async function registerUser(data: {
         return { success: false, error: 'Failed to register user' };
     }
 }
+
+export async function keepSessionAlive(): Promise<boolean> {
+    try {
+        const user = await getCurrentUser();
+        return !!user;
+    } catch (error) {
+        console.error('keepSessionAlive error:', error);
+        return false;
+    }
+}
+
