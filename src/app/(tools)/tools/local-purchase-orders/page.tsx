@@ -19,10 +19,11 @@ import LpoPdfDocument from '@/components/procurement/lpo-pdf-document';
 import { getLocalPurchaseOrders, updateLocalPurchaseOrder } from '@/app/actions/index';
 import { useQuery } from '@/hooks/use-query';
 
-const PDFViewer = dynamic(
-  () => import('@react-pdf/renderer').then((mod) => mod.PDFViewer),
+const LpoPdfActions = dynamic(
+  () => import('@/components/procurement/lpo-pdf-actions'),
   { ssr: false, loading: () => <Skeleton className="h-full w-full" /> }
 );
+
 
 export default function LocalPurchaseOrdersPage() {
   const { toast } = useToast();
@@ -36,6 +37,17 @@ export default function LocalPurchaseOrdersPage() {
   const [isLpoOpen, setIsLpoOpen] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [isPdfViewerOpen, setIsPdfViewerOpen] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
 
   const handleUpdateStatus = async (lpoId: string, status: 'Sent' | 'Completed' | 'Rejected') => {
     setIsUpdating(true);
@@ -99,8 +111,15 @@ export default function LocalPurchaseOrdersPage() {
         {selectedLpo && (
           <Dialog open={isPdfViewerOpen} onOpenChange={setIsPdfViewerOpen}>
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
-              <DialogHeader className="p-6 pb-4 border-b"><DialogTitle>PDF Preview: {selectedLpo.lpoNumber}</DialogTitle><DialogDescription>Use your browser's print functionality to save or print.</DialogDescription></DialogHeader>
-              <div className="flex-1 w-full h-full"><PDFViewer width="100%" height="100%"><LpoPdfDocument lpo={selectedLpo} settings={settings} formatCurrency={formatCurrency} /></PDFViewer></div>
+              <DialogHeader className="p-6 pb-4 border-b"><DialogTitle>PDF Preview: {selectedLpo.lpoNumber}</DialogTitle><DialogDescription>{isMobile ? 'Download the LPO PDF to print or view.' : "Use your browser's print functionality to save or print."}</DialogDescription></DialogHeader>
+              <div className="flex-1 w-full h-full">
+                <LpoPdfActions
+                  lpo={selectedLpo}
+                  settings={settings}
+                  formatCurrency={formatCurrency}
+                  isMobile={isMobile}
+                />
+              </div>
             </DialogContent>
           </Dialog>
         )}
