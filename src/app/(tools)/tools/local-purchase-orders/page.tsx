@@ -15,14 +15,8 @@ import { useSettings } from '@/context/settings-provider';
 import { useToast } from '@/hooks/use-toast';
 import { LpoDocument } from '@/components/procurement/lpo-document';
 import { Printer } from 'lucide-react';
-import LpoPdfDocument from '@/components/procurement/lpo-pdf-document';
 import { getLocalPurchaseOrders, updateLocalPurchaseOrder } from '@/app/actions/index';
 import { useQuery } from '@/hooks/use-query';
-
-const LpoPdfActions = dynamic(
-  () => import('@/components/procurement/lpo-pdf-actions'),
-  { ssr: false, loading: () => <Skeleton className="h-full w-full" /> }
-);
 
 
 export default function LocalPurchaseOrdersPage() {
@@ -36,17 +30,7 @@ export default function LocalPurchaseOrdersPage() {
   const [selectedLpo, setSelectedLpo] = React.useState<LocalPurchaseOrder | null>(null);
   const [isLpoOpen, setIsLpoOpen] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
-  const [isPdfViewerOpen, setIsPdfViewerOpen] = React.useState(false);
-  const [isMobile, setIsMobile] = React.useState(false);
 
-  React.useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
 
   const handleUpdateStatus = async (lpoId: string, status: 'Sent' | 'Completed' | 'Rejected') => {
@@ -102,27 +86,37 @@ export default function LocalPurchaseOrdersPage() {
               <div className="p-6 pb-0"><DialogHeader><DialogTitle>LPO Details: {selectedLpo.lpoNumber}</DialogTitle><DialogDescription>Review the LPO and update its status.</DialogDescription></DialogHeader></div>
               <LpoDocument lpo={selectedLpo} />
               <DialogFooter className="sm:justify-between p-6 pt-0">
-                <div className="flex gap-2">{selectedLpo.status === 'Draft' && (<Button variant="destructive" onClick={() => handleUpdateStatus(selectedLpo.id, 'Rejected')} disabled={isUpdating}>Reject</Button>)}<Button variant="secondary" onClick={() => setIsPdfViewerOpen(true)}><Printer className="mr-2 h-4 w-4" />View & Print PDF</Button></div>
-                <div className="flex gap-2"><DialogClose asChild><Button variant="outline">Close</Button></DialogClose>{selectedLpo.status === 'Draft' && (<Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Sent')} disabled={isUpdating}>{isUpdating ? 'Updating...' : 'Mark as Sent'}</Button>)}{selectedLpo.status === 'Sent' && (<Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Completed')} disabled={isUpdating}>{isUpdating ? 'Updating...' : 'Mark as Completed'}</Button>)}</div>
+                <div className="flex gap-2">
+                  {selectedLpo.status === 'Draft' && (
+                    <Button variant="destructive" onClick={() => handleUpdateStatus(selectedLpo.id, 'Rejected')} disabled={isUpdating}>
+                      Reject
+                    </Button>
+                  )}
+                  <Button variant="secondary" onClick={() => window.open(`/api/procurement/lpo/${selectedLpo.id}/pdf`, '_blank')}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    View & Print PDF
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <DialogClose asChild>
+                    <Button variant="outline">Close</Button>
+                  </DialogClose>
+                  {selectedLpo.status === 'Draft' && (
+                    <Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Sent')} disabled={isUpdating}>
+                      {isUpdating ? 'Updating...' : 'Mark as Sent'}
+                    </Button>
+                  )}
+                  {selectedLpo.status === 'Sent' && (
+                    <Button onClick={() => handleUpdateStatus(selectedLpo.id, 'Completed')} disabled={isUpdating}>
+                      {isUpdating ? 'Updating...' : 'Mark as Completed'}
+                    </Button>
+                  )}
+                </div>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
-        {selectedLpo && (
-          <Dialog open={isPdfViewerOpen} onOpenChange={setIsPdfViewerOpen}>
-            <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
-              <DialogHeader className="p-6 pb-4 border-b"><DialogTitle>PDF Preview: {selectedLpo.lpoNumber}</DialogTitle><DialogDescription>{isMobile ? 'Download the LPO PDF to print or view.' : "Use your browser's print functionality to save or print."}</DialogDescription></DialogHeader>
-              <div className="flex-1 w-full h-full">
-                <LpoPdfActions
-                  lpo={selectedLpo}
-                  settings={settings}
-                  formatCurrency={formatCurrency}
-                  isMobile={isMobile}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+
       </div>
     </>
   );
