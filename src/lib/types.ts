@@ -239,6 +239,8 @@ export interface Employee {
   phone?: string;
   email?: string;
   active: boolean;
+  employmentType?: 'Full Time' | 'Locum';
+  dailyRate?: number;
 }
 
 export interface Expense {
@@ -270,6 +272,8 @@ export interface PaySlip {
   status: 'Draft' | 'Paid';
   paymentDate?: string; // ISO string
   createdAt: string; // ISO string
+  daysWorked?: number;
+  dailyRate?: number;
 }
 
 export interface ShiftRecord {

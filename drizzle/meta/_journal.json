@@ -22,6 +22,13 @@
       "when": 1772570488429,
       "tag": "0002_living_white_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784289388408,
+      "tag": "0003_yummy_talkback",
+      "breakpoints": true
     }
   ]
 }

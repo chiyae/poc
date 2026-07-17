@@ -204,6 +204,8 @@ export const employees = pgTable('employees', {
   lastName: varchar('last_name', { length: 255 }).notNull(),
   position: varchar('position', { length: 255 }),
   baseSalary: real('base_salary').notNull().default(0),
+  employmentType: varchar('employment_type', { length: 50 }).notNull().default('Full Time'),
+  dailyRate: real('daily_rate').notNull().default(0),
   hireDate: timestamp('hire_date', { withTimezone: true }).defaultNow().notNull(),
   phone: varchar('phone', { length: 50 }),
   email: varchar('email', { length: 255 }),
@@ -236,6 +238,8 @@ export const payslips = pgTable('payslips', {
   status: varchar('status', { length: 50 }).notNull().default('Draft'), // Draft | Paid
   paymentDate: timestamp('payment_date', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  daysWorked: integer('days_worked'),
+  dailyRate: real('daily_rate'),
 });
 
 // ─── SHIFT RECORDS ───────────────────────────────────────

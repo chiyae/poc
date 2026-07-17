@@ -24,7 +24,9 @@ const employeeSchema = z.object({
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
     position: z.string().optional(),
-    baseSalary: z.coerce.number().nonnegative('Salary cannot be negative'),
+    baseSalary: z.coerce.number().nonnegative('Salary cannot be negative').default(0),
+    employmentType: z.enum(['Full Time', 'Locum']).default('Full Time'),
+    dailyRate: z.coerce.number().nonnegative('Daily rate cannot be negative').default(0),
     phone: z.string().optional(),
     email: z.string().email().optional().or(z.literal('')),
 });
@@ -33,6 +35,7 @@ const payslipSchema = z.object({
     employeeId: z.string().min(1, 'Employee is required'),
     month: z.coerce.number().min(1).max(12),
     year: z.coerce.number().min(2020),
+    daysWorked: z.coerce.number().min(0).optional(),
     allowanceDetails: z.array(z.object({ description: z.string(), amount: z.coerce.number().default(0) })).default([]),
     deductionDetails: z.array(z.object({ description: z.string(), amount: z.coerce.number().default(0) })).default([]),
 });
@@ -68,6 +71,8 @@ export function PayrollManager() {
             lastName: '',
             position: '',
             baseSalary: 0,
+            employmentType: 'Full Time',
+            dailyRate: 0,
             phone: '',
             email: '',
         },
@@ -79,6 +84,7 @@ export function PayrollManager() {
             employeeId: '',
             month: currentMonth,
             year: currentYear,
+            daysWorked: 0,
             allowanceDetails: [{ description: '', amount: 0 }],
             deductionDetails: [{ description: '', amount: 0 }],
         },
@@ -98,10 +104,18 @@ export function PayrollManager() {
     const watchDeductions = payslipForm.watch('deductionDetails');
     const selectedEmployeeId = payslipForm.watch('employeeId');
     const selectedEmployee = employees?.find(e => e.id === selectedEmployeeId);
+    const watchDaysWorked = payslipForm.watch('daysWorked') || 0;
+    const watchEmploymentType = employeeForm.watch('employmentType');
+
+    const baseAmount = selectedEmployee
+        ? selectedEmployee.employmentType === 'Locum'
+            ? (selectedEmployee.dailyRate || 0) * watchDaysWorked
+            : selectedEmployee.baseSalary
+        : 0;
 
     const totalAllowances = watchAllowances?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) || 0;
     const totalDeductions = watchDeductions?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) || 0;
-    const netPay = (selectedEmployee?.baseSalary || 0) + totalAllowances - totalDeductions;
+    const netPay = baseAmount + totalAllowances - totalDeductions;
 
 
     const onAddEmployee = async (values: z.infer<typeof employeeSchema>) => {
@@ -124,14 +138,20 @@ export function PayrollManager() {
         const employee = employees?.find(e => e.id === values.employeeId);
         if (!employee) return;
 
+        const baseAmount = employee.employmentType === 'Locum'
+            ? (employee.dailyRate || 0) * (values.daysWorked || 0)
+            : employee.baseSalary;
+
         const sumAllowances = values.allowanceDetails.reduce((a, b) => a + b.amount, 0);
         const sumDeductions = values.deductionDetails.reduce((a, b) => a + b.amount, 0);
-        const netPay = employee.baseSalary + sumAllowances - sumDeductions;
+        const netPay = baseAmount + sumAllowances - sumDeductions;
 
         try {
             const res = await createPaySlip({
                 ...values,
-                baseSalary: employee.baseSalary,
+                baseSalary: baseAmount,
+                dailyRate: employee.employmentType === 'Locum' ? employee.dailyRate : null,
+                daysWorked: employee.employmentType === 'Locum' ? values.daysWorked : null,
                 allowances: sumAllowances,
                 deductions: sumDeductions,
                 netPay,
@@ -169,7 +189,7 @@ export function PayrollManager() {
                             <DialogContent>
                                 <DialogHeader>
                                     <DialogTitle>Add New Employee</DialogTitle>
-                                    <DialogDescription>Enter employee details and base salary.</DialogDescription>
+                                    <DialogDescription>Enter employee details, contract type, and compensation.</DialogDescription>
                                 </DialogHeader>
                                 <Form {...employeeForm}>
                                     <form onSubmit={employeeForm.handleSubmit(onAddEmployee)} className="space-y-4">
@@ -184,12 +204,37 @@ export function PayrollManager() {
                                                 <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                                             )} />
                                         </div>
-                                        <FormField control={employeeForm.control} name="position" render={({ field }) => (
-                                            <FormItem><FormLabel>Position</FormLabel><FormControl><Input placeholder="e.g. Nurse, Cashier" {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
-                                        <FormField control={employeeForm.control} name="baseSalary" render={({ field }) => (
-                                            <FormItem><FormLabel>Base Monthly Salary</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField control={employeeForm.control} name="position" render={({ field }) => (
+                                                <FormItem><FormLabel>Position</FormLabel><FormControl><Input placeholder="e.g. Nurse, Cashier" {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                            <FormField control={employeeForm.control} name="employmentType" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Employment Type</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select type" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="Full Time">Full Time</SelectItem>
+                                                            <SelectItem value="Locum">Locum (Daily)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
+                                        {watchEmploymentType === 'Locum' ? (
+                                            <FormField control={employeeForm.control} name="dailyRate" render={({ field }) => (
+                                                <FormItem><FormLabel>Daily Rate</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                        ) : (
+                                            <FormField control={employeeForm.control} name="baseSalary" render={({ field }) => (
+                                                <FormItem><FormLabel>Base Monthly Salary</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                        )}
                                         <div className="grid grid-cols-2 gap-4">
                                             <FormField control={employeeForm.control} name="phone" render={({ field }) => (
                                                 <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -245,6 +290,35 @@ export function PayrollManager() {
                                                 <FormItem><FormLabel>Year</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
                                             )} />
                                         </div>
+
+                                        {selectedEmployee && (
+                                            selectedEmployee.employmentType === 'Locum' ? (
+                                                <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                                                    <div>
+                                                        <label className="text-sm font-medium">Daily Rate</label>
+                                                        <div className="h-10 px-3 py-2 border rounded-md bg-muted flex items-center text-sm font-semibold">
+                                                            {formatCurrency(selectedEmployee.dailyRate || 0)}
+                                                        </div>
+                                                    </div>
+                                                    <FormField control={payslipForm.control} name="daysWorked" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Days Worked</FormLabel>
+                                                            <FormControl>
+                                                                <Input type="number" {...field} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                </div>
+                                            ) : (
+                                                <div className="border-t pt-4">
+                                                    <label className="text-sm font-medium">Base Monthly Salary</label>
+                                                    <div className="h-10 px-3 py-2 border rounded-md bg-muted flex items-center text-sm font-semibold">
+                                                        {formatCurrency(selectedEmployee.baseSalary)}
+                                                    </div>
+                                                </div>
+                                            )
+                                        )}
                                         <div className="space-y-4 border-t pt-4">
                                             <div className="flex items-center justify-between">
                                                 <h4 className="text-sm font-medium">Allowances</h4>
@@ -301,24 +375,32 @@ export function PayrollManager() {
                                 <TableRow>
                                     <TableHead>Num</TableHead>
                                     <TableHead>Name</TableHead>
-                                    <TableHead>Position</TableHead>
+                                    <TableHead>Position / Type</TableHead>
                                     <TableHead>Contact</TableHead>
-                                    <TableHead className="text-right">Base Salary</TableHead>
+                                    <TableHead className="text-right">Salary / Rate</TableHead>
                                     <TableHead className="text-center w-[60px]">Status</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loadingEmployees ? (
-                                    <TableRow><TableCell colSpan={6} className="h-24 text-center">Loading staff...</TableCell></TableRow>
+                                     <TableRow><TableCell colSpan={6} className="h-24 text-center">Loading staff...</TableCell></TableRow>
                                 ) : !employees?.length ? (
-                                    <TableRow><TableCell colSpan={6} className="h-24 text-center">No employees registered.</TableCell></TableRow>
+                                     <TableRow><TableCell colSpan={6} className="h-24 text-center">No employees registered.</TableCell></TableRow>
                                 ) : employees.map(emp => (
                                     <TableRow key={emp.id} className={`${!emp.active ? 'opacity-40 grayscale' : ''}`}>
                                         <TableCell className="font-mono text-xs text-muted-foreground">{emp.employeeNumber}</TableCell>
                                         <TableCell className="font-medium">{emp.firstName} {emp.lastName}</TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">{emp.position || '—'}</TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">
+                                            {emp.position || '—'} {emp.employmentType ? `(${emp.employmentType})` : '(Full Time)'}
+                                        </TableCell>
                                         <TableCell className="text-xs text-muted-foreground">{emp.phone || emp.email || '—'}</TableCell>
-                                        <TableCell className="text-right font-bold tabular-nums">{formatCurrency(emp.baseSalary)}</TableCell>
+                                        <TableCell className="text-right font-bold tabular-nums">
+                                            {emp.employmentType === 'Locum' ? (
+                                                <span>{formatCurrency(emp.dailyRate || 0)}<span className="text-[10px] text-muted-foreground font-normal"> /day</span></span>
+                                            ) : (
+                                                <span>{formatCurrency(emp.baseSalary)}<span className="text-[10px] text-muted-foreground font-normal"> /mo</span></span>
+                                            )}
+                                        </TableCell>
                                         <TableCell className="text-center">
                                             <Button
                                                 variant="ghost"
@@ -374,8 +456,16 @@ export function PayrollManager() {
                                         <TableRow><TableCell colSpan={7} className="h-24 text-center">No payments recorded for this period.</TableCell></TableRow>
                                     ) : payslipsData.map(({ payslip, employee }) => (
                                         <TableRow key={payslip.id}>
-                                            <TableCell className="font-medium">{employee.firstName} {employee.lastName}</TableCell>
-                                            <TableCell className="text-xs">{formatCurrency(payslip.baseSalary)}</TableCell>
+                                            <TableCell className="font-medium">
+                                                {employee.firstName} {employee.lastName}
+                                                {employee.employmentType === 'Locum' && (
+                                                    <span className="text-[10px] text-muted-foreground ml-2">(Locum)</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-xs">
+                                                {formatCurrency(payslip.baseSalary)}
+                                                {payslip.daysWorked ? ` (${payslip.daysWorked} days)` : ''}
+                                            </TableCell>
                                             <TableCell className="text-xs text-green-600">+{formatCurrency(payslip.allowances)}</TableCell>
                                             <TableCell className="text-xs text-red-600">-{formatCurrency(payslip.deductions)}</TableCell>
                                             <TableCell className="text-right font-bold">{formatCurrency(payslip.netPay)}</TableCell>
@@ -424,7 +514,15 @@ export function PayrollManager() {
                                 <div>
                                     <p className="text-[8px] uppercase font-bold text-slate-400 mb-0.5">Employee Details</p>
                                     <p className="font-bold text-base leading-tight">{printingPayslip.employee.firstName} {printingPayslip.employee.lastName}</p>
-                                    <p className="text-[10px] opacity-80">{printingPayslip.employee.position || 'Employee'} ({printingPayslip.employee.employeeNumber})</p>
+                                    <p className="text-[10px] opacity-80">
+                                        {printingPayslip.employee.position || 'Employee'} ({printingPayslip.employee.employeeNumber})
+                                        {printingPayslip.employee.employmentType === 'Locum' ? ' - Locum' : ' - Full Time'}
+                                    </p>
+                                    {printingPayslip.employee.employmentType === 'Locum' && (
+                                        <p className="text-[10px] text-slate-500 mt-0.5 font-semibold">
+                                            Daily Rate: {formatCurrency(printingPayslip.payslip.dailyRate || printingPayslip.employee.dailyRate || 0)}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="text-right">
                                     <p className="text-[8px] uppercase font-bold text-slate-400 mb-0.5">Payment Details</p>
@@ -445,7 +543,10 @@ export function PayrollManager() {
                                         </thead>
                                         <tbody className="divide-y">
                                             <tr>
-                                                <td className="py-1.5 font-medium">Basic Salary</td>
+                                                <td className="py-1.5 font-medium">
+                                                    {printingPayslip.employee.employmentType === 'Locum' ? 'Basic Locum Pay' : 'Basic Salary'}
+                                                    {printingPayslip.payslip.daysWorked ? ` (${printingPayslip.payslip.daysWorked} days worked)` : ''}
+                                                </td>
                                                 <td className="py-1.5 text-right">{formatCurrency(printingPayslip.payslip.baseSalary)}</td>
                                                 <td className="py-1.5 text-right">—</td>
                                             </tr>
