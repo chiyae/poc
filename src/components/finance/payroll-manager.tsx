@@ -488,15 +488,7 @@ export function PayrollManager() {
                         <DialogTitle>Payslip Preview</DialogTitle>
                     </DialogHeader>
                     {printingPayslip && (
-                        <div className="bg-white p-6 text-slate-900 border" id="printable-payslip">
-                            <style>{`
-                                @media print {
-                                    body * { visibility: hidden; }
-                                    #printable-payslip, #printable-payslip * { visibility: visible; }
-                                    #printable-payslip { position: absolute; left: 0; top: 0; width: 100%; border: none; padding: 0; }
-                                    .print\\:hidden { display: none !important; }
-                                }
-                            `}</style>
+                        <div className="print-container bg-white p-6 text-slate-900 border">
                             <div className="flex justify-between items-start border-b pb-4 mb-4">
                                 <div>
                                     <h1 className="text-xl font-bold uppercase tracking-tight">{settings?.clinicName || 'Clinic Name'}</h1>
