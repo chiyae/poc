@@ -1,6 +1,4 @@
 
-'use client';
-
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 import type { LocalPurchaseOrder } from '@/lib/types';

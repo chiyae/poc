@@ -3,8 +3,8 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   // output: 'export', // Removed: server runtime needed for PostgreSQL
-  transpilePackages: ['@react-pdf/renderer', 'react-day-picker'],
-  serverExternalPackages: ['postgres', 'pg'],
+  transpilePackages: ['react-day-picker'],
+  serverExternalPackages: ['postgres', 'pg', '@react-pdf/renderer'],
   typescript: {
     ignoreBuildErrors: true,
   },
